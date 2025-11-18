@@ -1,0 +1,31 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+llm_game.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Game output - excluded to keep repo clean
+games/
+# Keep example game for reference
+!games/example_game_001/
