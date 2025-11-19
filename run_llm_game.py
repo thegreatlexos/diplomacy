@@ -5,7 +5,10 @@ Script to run a complete LLM-powered Diplomacy game.
 import logging
 import sys
 import os
+import json
+import random
 import argparse
+from datetime import datetime
 from dotenv import load_dotenv
 from diplomacy_game_engine.core.map import Power
 from diplomacy_game_engine.gamemaster.gamemaster import Gamemaster
@@ -23,6 +26,81 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+
+def randomize_model_assignments(player_models: Dict[Power, str]) -> Dict[Power, str]:
+    """
+    Randomly shuffle model assignments across powers.
+    
+    Args:
+        player_models: Original power->model mapping
+        
+    Returns:
+        New mapping with models randomly assigned to powers
+    """
+    # Get list of models and powers
+    models = list(player_models.values())
+    powers = list(player_models.keys())
+    
+    # Shuffle the models
+    random.shuffle(models)
+    
+    # Create new mapping
+    randomized = {power: model for power, model in zip(powers, models)}
+    
+    # Log the assignments
+    logger.info("")
+    logger.info("="*60)
+    logger.info("RANDOMIZED MODEL ASSIGNMENTS")
+    logger.info("="*60)
+    for power, model in randomized.items():
+        logger.info(f"  {power.value:15} -> {model}")
+    logger.info("="*60)
+    logger.info("")
+    
+    return randomized
+
+
+def save_model_assignments(
+    game_folder: str,
+    game_id: str,
+    player_models: Dict[Power, str],
+    summarizer_model: str,
+    platform: str,
+    randomized: bool
+):
+    """
+    Save model assignments to JSON file for tracking.
+    
+    Args:
+        game_folder: Root folder for game files
+        game_id: Game identifier
+        player_models: Power->model mapping
+        summarizer_model: Summarizer model ID
+        platform: Platform being used (bedrock/openrouter)
+        randomized: Whether assignments were randomized
+    """
+    assignments = {
+        "game_id": game_id,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "platform": platform,
+        "randomized": randomized,
+        "assignments": {
+            power.value: model_id 
+            for power, model_id in player_models.items()
+        },
+        "summarizer": summarizer_model
+    }
+    
+    # Ensure game folder exists
+    os.makedirs(game_folder, exist_ok=True)
+    
+    # Save to JSON
+    assignments_path = os.path.join(game_folder, "model_assignments.json")
+    with open(assignments_path, 'w') as f:
+        json.dump(assignments, f, indent=2)
+    
+    logger.info(f"Model assignments saved: {assignments_path}")
 
 
 def main():
@@ -66,6 +144,21 @@ def main():
         Power.RUSSIA: os.getenv('MODEL_RUSSIA', 'eu.anthropic.claude-haiku-4-5-20251001-v1:0'),
         Power.TURKEY: os.getenv('MODEL_TURKEY', 'eu.anthropic.claude-haiku-4-5-20251001-v1:0'),
     }
+    
+    # Randomize assignments if enabled
+    randomize = os.getenv('RANDOMIZE_ASSIGNMENTS', 'false').lower() == 'true'
+    if randomize:
+        player_models = randomize_model_assignments(player_models)
+    
+    # Save model assignments for tracking
+    save_model_assignments(
+        game_folder=game_folder,
+        game_id=game_id,
+        player_models=player_models,
+        summarizer_model=summarizer_model,
+        platform=model_platform,
+        randomized=randomize
+    )
     
     logger.info("="*60)
     logger.info("LLM DIPLOMACY GAME")

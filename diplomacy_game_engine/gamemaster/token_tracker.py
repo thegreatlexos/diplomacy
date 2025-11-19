@@ -3,6 +3,7 @@ Token usage tracker for monitoring LLM API costs.
 """
 
 import csv
+import json
 import os
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -167,6 +168,17 @@ class TokenTracker:
         
         return input_cost + output_cost
     
+    def _load_model_assignments(self) -> Optional[Dict]:
+        """Load model assignments from JSON file if it exists."""
+        assignments_path = os.path.join(self.game_folder, "model_assignments.json")
+        if os.path.exists(assignments_path):
+            try:
+                with open(assignments_path, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.warning(f"Could not load model assignments: {e}")
+        return None
+    
     def generate_report(self) -> str:
         """
         Generate a markdown report of token usage.
@@ -176,6 +188,9 @@ class TokenTracker:
         """
         if not self.records:
             return "# Token Usage Report\n\nNo LLM calls recorded."
+        
+        # Load model assignments if available
+        assignments_data = self._load_model_assignments()
         
         # Calculate totals
         total_input = sum(r['input_tokens'] for r in self.records)
@@ -233,10 +248,33 @@ class TokenTracker:
             by_model[model_id]['total'] += record['total_tokens']
             by_model[model_id]['cost'] += float(record['estimated_cost_usd'])
         
-        # Build report
-        report = f"""# Token Usage Report
-
-## Summary
+        # Build report with model assignments if available
+        report = "# Token Usage Report\n\n"
+        
+        # Add model assignments section if available
+        if assignments_data:
+            report += "## Game Configuration\n"
+            report += f"- **Game ID**: {assignments_data.get('game_id', 'N/A')}\n"
+            report += f"- **Platform**: {assignments_data.get('platform', 'N/A')}\n"
+            report += f"- **Randomized**: {'Yes' if assignments_data.get('randomized') else 'No'}\n"
+            report += f"- **Timestamp**: {assignments_data.get('timestamp', 'N/A')}\n\n"
+            
+            report += "## Model Assignments\n\n"
+            report += "| Power | Model |\n"
+            report += "|-------|-------|\n"
+            
+            assignments = assignments_data.get('assignments', {})
+            for power in ['ENGLAND', 'FRANCE', 'GERMANY', 'ITALY', 'AUSTRIA', 'RUSSIA', 'TURKEY']:
+                model = assignments.get(power, 'N/A')
+                report += f"| {power:15} | {model} |\n"
+            
+            summarizer = assignments_data.get('summarizer')
+            if summarizer:
+                report += f"| {'Summarizer':15} | {summarizer} |\n"
+            
+            report += "\n"
+        
+        report += f"""## Summary
 - **Total Calls**: {len(self.records)}
 - **Total Input Tokens**: {total_input:,}
 - **Total Output Tokens**: {total_output:,}
