@@ -33,6 +33,40 @@ class BedrockClient:
             self.client = boto3.client('bedrock-runtime', region_name=region)
             logger.debug(f"BedrockClient: {region}")
     
+    def generate(
+        self,
+        model_id: str,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        max_tokens: int = 4096,
+        temperature: float = 0.7
+    ) -> Dict[str, Any]:
+        """
+        Generate a response (unified interface).
+        
+        Args:
+            model_id: The model identifier
+            prompt: The user prompt
+            system_prompt: Optional system prompt
+            max_tokens: Maximum tokens to generate
+            temperature: Sampling temperature (0.0 to 1.0)
+            
+        Returns:
+            Dict with 'content' and 'usage' keys
+        """
+        text, usage = self.invoke_model(
+            model_id=model_id,
+            prompt=prompt,
+            system_prompt=system_prompt,
+            max_tokens=max_tokens,
+            temperature=temperature
+        )
+        
+        return {
+            'content': text,
+            'usage': usage
+        }
+    
     def invoke_model(
         self,
         model_id: str,

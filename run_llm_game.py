@@ -43,8 +43,10 @@ def main():
     args = parser.parse_args()
     
     # Load configuration from environment
+    model_platform = os.getenv('MODEL_PLATFORM', 'bedrock').lower()
     aws_region = os.getenv('AWS_REGION', 'eu-west-1')
     aws_profile = os.getenv('AWS_PROFILE', 'sf-datadev-dataeng')
+    openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
     max_years = int(os.getenv('MAX_YEARS', '20'))
     press_rounds_spring_1901 = int(os.getenv('PRESS_ROUNDS_SPRING_1901', '3'))
     press_rounds_default = int(os.getenv('PRESS_ROUNDS_DEFAULT', '2'))
@@ -92,8 +94,10 @@ def main():
             game_id=game_id,
             game_folder=game_folder,
             player_models=player_models,
+            model_platform=model_platform,
             aws_region=aws_region,
             aws_profile=aws_profile,
+            openrouter_api_key=openrouter_api_key,
             max_years=max_years,
             enable_visualization=args.visualize,
             gunboat_mode=args.gun_boat,
