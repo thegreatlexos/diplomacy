@@ -9,6 +9,7 @@ import json
 import random
 import argparse
 from datetime import datetime
+from typing import Dict
 from dotenv import load_dotenv
 from diplomacy_game_engine.core.map import Power
 from diplomacy_game_engine.gamemaster.gamemaster import Gamemaster
