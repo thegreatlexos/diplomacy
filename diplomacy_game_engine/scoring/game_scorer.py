@@ -166,10 +166,34 @@ class GameScorer:
         Returns:
             Dict mapping power name to precision score
         """
-        # TODO: Implement order analysis
-        # This requires parsing orders and resolution results
-        # For now, return placeholder
-        logger.info("Precision scoring not yet implemented")
+        from .order_analyzer import OrderAnalyzer
+        
+        # Analyze orders
+        analyzer = OrderAnalyzer(self.game_folder)
+        counts = analyzer.analyze_all_orders()
+        
+        # Store counts for reporting
+        self.precision_counts = counts
+        
+        # Calculate scores
+        for power in Power:
+            power_name = power.value
+            score = 0
+            
+            metrics = counts.get(power_name, {})
+            
+            # Apply scoring weights
+            score += metrics.get('invalid_orders', 0) * self.INVALID_ORDER_PENALTY
+            score += metrics.get('convoys', 0) * self.SUCCESSFUL_CONVOY_POINTS
+            score += metrics.get('support_own', 0) * self.SUCCESSFUL_SUPPORT_OWN_POINTS
+            score += metrics.get('support_other', 0) * self.SUCCESSFUL_SUPPORT_OTHER_POINTS
+            score += metrics.get('support_hold', 0) * self.SUCCESSFUL_SUPPORT_HOLD_POINTS
+            score += metrics.get('support_attack', 0) * self.SUCCESSFUL_SUPPORT_ATTACK_POINTS
+            score += metrics.get('bounces', 0) * self.BOUNCED_MOVE_PENALTY
+            
+            self.precision_scores[power_name] = score
+        
+        logger.info("Precision scores calculated")
         return self.precision_scores
     
     def extract_press_scores(self) -> Dict[str, Dict]:
@@ -205,12 +229,14 @@ class GameScorer:
                 
                 for match in matches:
                     power_name, truth, coop, decep = match
-                    if power_name not in self.press_scores:
-                        self.press_scores[power_name] = {
-                            'truthfulness': [],
-                            'cooperation': [],
-                            'deception': []
-                        }
+                    
+                    # Initialize the score lists if they don't exist
+                    if 'truthfulness' not in self.press_scores.get(power_name, {}):
+                        if power_name not in self.press_scores:
+                            self.press_scores[power_name] = {}
+                        self.press_scores[power_name]['truthfulness'] = []
+                        self.press_scores[power_name]['cooperation'] = []
+                        self.press_scores[power_name]['deception'] = []
                     
                     self.press_scores[power_name]['truthfulness'].append(int(truth))
                     self.press_scores[power_name]['cooperation'].append(int(coop))
@@ -328,10 +354,18 @@ class GameScorer:
                     elif 'sonnet' in model.lower():
                         model = 'Sonnet 4.5'
             
-            # Placeholder values - will be populated when precision scoring is implemented
-            report += f"| {power_name:15} | {model:5} | {0:14} | {0:7} | {0:11} | {0:13} | {0:12} | {0:14} | {0:7} | {0:5} |\n"
-        
-        report += "\n*Note: Precision scoring implementation in progress. Counts will be populated in future versions.*\n"
+            # Get actual counts from precision analysis
+            counts = getattr(self, 'precision_counts', {}).get(power_name, {})
+            invalid = counts.get('invalid_orders', 0)
+            convoys = counts.get('convoys', 0)
+            supp_own = counts.get('support_own', 0)
+            supp_other = counts.get('support_other', 0)
+            supp_hold = counts.get('support_hold', 0)
+            supp_attack = counts.get('support_attack', 0)
+            bounces = counts.get('bounces', 0)
+            total = self.precision_scores.get(power_name, 0)
+            
+            report += f"| {power_name:15} | {model:11} | {invalid:14} | {convoys:7} | {supp_own:11} | {supp_other:13} | {supp_hold:12} | {supp_attack:14} | {bounces:7} | {total:5} |\n"
         
         return report
     
