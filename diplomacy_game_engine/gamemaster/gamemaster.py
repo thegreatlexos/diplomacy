@@ -29,8 +29,10 @@ class Gamemaster:
         game_id: str,
         game_folder: str,
         player_models: Dict[Power, str],
+        model_platform: str = "bedrock",
         aws_region: str = "eu-west-1",
         aws_profile: Optional[str] = None,
+        openrouter_api_key: Optional[str] = None,
         max_years: int = 20,
         enable_visualization: bool = False,
         gunboat_mode: bool = False,
@@ -44,9 +46,11 @@ class Gamemaster:
         Args:
             game_id: Unique identifier for this game
             game_folder: Root folder for game files
-            player_models: Dictionary mapping Power to Bedrock model ID
+            player_models: Dictionary mapping Power to model ID
+            model_platform: Platform to use ("bedrock" or "openrouter")
             aws_region: AWS region for Bedrock
             aws_profile: AWS profile name (optional)
+            openrouter_api_key: OpenRouter API key (required if platform is "openrouter")
             max_years: Maximum years before auto-draw
             enable_visualization: Whether to generate visualizations
             gunboat_mode: Whether to disable press/communication (gunboat Diplomacy)
@@ -77,20 +81,58 @@ class Gamemaster:
         # Initialize components
         self.game_map = create_standard_map()
         self.state = create_starting_state()
-        self.bedrock_client = BedrockClient(region=aws_region, profile_name=aws_profile)
         self.press_system = PressSystem(game_folder)
         self.phase_manager = PhaseManager()
         self.token_tracker = TokenTracker(game_folder)
-        self.summarizer = SeasonSummarizer(self.bedrock_client, summarizer_model, self.token_tracker) if summarizer_model else None
         self.viz_counter = 0  # Global counter for visualization filenames
+        
+        # Create LLM client based on platform
+        if model_platform.lower() == "openrouter":
+            # Use OpenRouter
+            if not openrouter_api_key:
+                raise ValueError("OpenRouter API key required when model_platform is 'openrouter'")
+            
+            from diplomacy_game_engine.llm_routing import LLMClientFactory
+            from diplomacy_game_engine.llm_routing.unified_client import UnifiedLLMClient
+            
+            # For OpenRouter, we need to create a client per model
+            # For now, use the first model as default (we'll create per-player clients in LLMPlayer)
+            first_model = list(player_models.values())[0]
+            routing_client = LLMClientFactory.create_client(
+                model_id=first_model,
+                openrouter_api_key=openrouter_api_key
+            )
+            self.bedrock_client = UnifiedLLMClient(routing_client)
+            logger.info(f"Using OpenRouter platform with model: {first_model}")
+        else:
+            # Use Bedrock (default, backward compatible)
+            self.bedrock_client = BedrockClient(region=aws_region, profile_name=aws_profile)
+            logger.info(f"Using Bedrock platform in region: {aws_region}")
+        
+        # Initialize summarizer
+        self.summarizer = SeasonSummarizer(self.bedrock_client, summarizer_model, self.token_tracker) if summarizer_model else None
         
         # Initialize players
         self.players: Dict[Power, LLMPlayer] = {}
         for power, model_id in player_models.items():
+            # For OpenRouter, create a dedicated client for each player's model
+            if model_platform.lower() == "openrouter":
+                from diplomacy_game_engine.llm_routing import LLMClientFactory
+                from diplomacy_game_engine.llm_routing.unified_client import UnifiedLLMClient
+                
+                routing_client = LLMClientFactory.create_client(
+                    model_id=model_id,
+                    openrouter_api_key=openrouter_api_key
+                )
+                player_client = UnifiedLLMClient(routing_client)
+            else:
+                # For Bedrock, all players share the same client
+                player_client = self.bedrock_client
+            
             self.players[power] = LLMPlayer(
                 power=power,
                 model_id=model_id,
-                bedrock_client=self.bedrock_client,
+                bedrock_client=player_client,
                 press_system=self.press_system,
                 gunboat_mode=gunboat_mode,
                 token_tracker=self.token_tracker
