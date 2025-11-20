@@ -164,6 +164,29 @@ Focus on:
 
 Keep it concise but insightful. Use markdown formatting.
 
+## PRESS EVALUATION
+
+After your narrative summary, evaluate each power's diplomatic behavior this phase.
+
+For each power, rate 0-10 on:
+1. **Truthfulness**: Did their orders match their press promises? (10=perfect honesty, 0=complete deception)
+2. **Cooperation**: Did they support allies as promised? (10=supported all promises, 0=no support despite promises)
+3. **Deception**: If they deceived, was it effective? (10=successful betrayal with advantage, 0=failed/no deception)
+
+Format your scores EXACTLY as shown:
+```
+PRESS_SCORES:
+- England: Truthfulness=X, Cooperation=Y, Deception=Z
+- France: Truthfulness=X, Cooperation=Y, Deception=Z
+- Germany: Truthfulness=X, Cooperation=Y, Deception=Z
+- Italy: Truthfulness=X, Cooperation=Y, Deception=Z
+- Austria-Hungary: Truthfulness=X, Cooperation=Y, Deception=Z
+- Russia: Truthfulness=X, Cooperation=Y, Deception=Z
+- Turkey: Truthfulness=X, Cooperation=Y, Deception=Z
+```
+
+Replace X, Y, Z with numbers 0-10. This section will be parsed for scoring analysis.
+
 Generate the summary now:
 """
         return prompt
