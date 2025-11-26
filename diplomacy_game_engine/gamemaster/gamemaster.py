@@ -144,6 +144,16 @@ class Gamemaster:
         if gunboat_mode:
             logger.info("GUNBOAT MODE ENABLED - No press/communication allowed")
     
+    def _update_scoring_report(self):
+        """Regenerate scoring report with current game state."""
+        try:
+            from diplomacy_game_engine.scoring import GameScorer
+            scorer = GameScorer(self.game_folder)
+            scorer.save_report()
+            logger.debug("Scoring report updated")
+        except Exception as e:
+            logger.warning(f"Could not update scoring report: {e}")
+    
     def _get_viz_filename(self, step: str) -> str:
         """
         Generate visualization filename with ascending counter.
@@ -391,6 +401,9 @@ class Gamemaster:
                 f.write(summary)
             logger.info(f"Summary saved: {summary_filename}")
         
+        # Update scoring report after phase completes
+        self._update_scoring_report()
+        
         # Check for dislodged units
         has_dislodged = len(self.state.dislodged_units) > 0
         if has_dislodged:
@@ -569,6 +582,9 @@ class Gamemaster:
         state_filename = f"{self.state.year}_winter_after.json"
         state_path = os.path.join(self.states_folder, state_filename)
         self.state.to_json(state_path)
+        
+        # Update scoring report after winter phase
+        self._update_scoring_report()
         
         # Check victory before advancing
         winner = self.phase_manager.check_victory(self.state)
