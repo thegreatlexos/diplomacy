@@ -140,7 +140,8 @@ class LLMPlayer:
                 state=state,
                 power=self.power,
                 game_map=game_map,
-                press_threads=press_threads
+                press_threads=press_threads,
+                game_folder=self.press_system.game_folder
             )
             
             # Get LLM response

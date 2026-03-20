@@ -2,6 +2,7 @@
 Prompt builder for generating LLM prompts with game context.
 """
 
+import os
 from typing import Dict, List, Optional
 from diplomacy_game_engine.core.game_state import GameState, Season, Unit
 from diplomacy_game_engine.core.map import Power, Map, ProvinceType
@@ -384,8 +385,17 @@ Example: StP has two coasts (nc and sc)
         return "\n".join(lines)
     
     @staticmethod
-    def build_press_history(press_threads: Dict[str, str], power: Power) -> str:
-        """Build press history from thread files."""
+    def build_press_history(press_threads: Dict[str, str], power: Power, game_folder: str = None) -> str:
+        """Build press history from thread files or static summary."""
+        # Check if static summary exists (after year 10)
+        if game_folder:
+            static_summary_path = os.path.join(game_folder, "press_history_summary.txt")
+            if os.path.exists(static_summary_path):
+                with open(static_summary_path, 'r') as f:
+                    static_summary = f.read()
+                return f"# DIPLOMATIC HISTORY (Years 1-10 Summary)\n\n{static_summary}\n\n**Note**: No new diplomatic communications after year 10."
+        
+        # Otherwise use regular press threads
         if not press_threads:
             return "# PRESS HISTORY\n\nNo messages yet."
         
@@ -495,7 +505,8 @@ Submit your messages now:
         state: GameState,
         power: Power,
         game_map: Map,
-        press_threads: Dict[str, str]
+        press_threads: Dict[str, str],
+        game_folder: str = None
     ) -> str:
         """Build prompt for movement orders."""
         # Build unit list
@@ -525,7 +536,7 @@ Submit your messages now:
 
 {PromptBuilder.build_game_state_summary(state, power)}
 
-{PromptBuilder.build_press_history(press_threads, power)}
+{PromptBuilder.build_press_history(press_threads, power, game_folder)}
 
 ---
 

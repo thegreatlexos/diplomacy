@@ -107,9 +107,9 @@ def main():
     
     # Analyze existing games
     games = {
-        'Gunboat Mode': 'games/bedrock_mix_press_score_000',  # Replace with actual gunboat game
-        'Press Mode (1 year)': 'games/bedrock_mix_press_score_001',
-        'Press Mode (20 years)': 'games/bedrock_mix_press_score_003'
+        'Gunboat Mode': 'games/archive/bedrock_mix_gunboat_000',
+        'Press Mode Full (20 years)': 'games/archive/bedrock_mix_press_score_003',
+        'Press Mode Optimized (20 years)': 'games/20251201_new_bedrock_mix_press_000'
     }
     
     print("\n" + "="*80)
@@ -119,10 +119,42 @@ def main():
     for game_name, game_folder in games.items():
         usage = load_token_usage(game_folder)
         if usage:
+            total = usage['total_input'] + usage['total_output']
             print(f"\n{game_name}:")
             print(f"  Input tokens:  {usage['total_input']:,}")
             print(f"  Output tokens: {usage['total_output']:,}")
-            print(f"  Total tokens:  {usage['total_input'] + usage['total_output']:,}")
+            print(f"  Total tokens:  {total:,}")
+            
+            # Show breakdown by call type
+            if usage['by_call_type']:
+                print(f"\n  Token Sources:")
+                
+                # Group press calls together
+                press_tokens = sum(
+                    data['input'] + data['output'] 
+                    for call_type, data in usage['by_call_type'].items() 
+                    if 'press' in call_type.lower()
+                )
+                
+                # Get other major categories
+                orders_tokens = sum(
+                    data['input'] + data['output']
+                    for call_type, data in usage['by_call_type'].items()
+                    if 'orders' in call_type.lower()
+                )
+                
+                summary_tokens = sum(
+                    data['input'] + data['output']
+                    for call_type, data in usage['by_call_type'].items()
+                    if 'summary' in call_type.lower()
+                )
+                
+                if press_tokens > 0:
+                    print(f"    Press messages:   {press_tokens:>12,} ({press_tokens/total*100:>5.1f}%)")
+                if orders_tokens > 0:
+                    print(f"    Orders:           {orders_tokens:>12,} ({orders_tokens/total*100:>5.1f}%)")
+                if summary_tokens > 0:
+                    print(f"    Summaries:        {summary_tokens:>12,} ({summary_tokens/total*100:>5.1f}%)")
     
     # Define presets
     presets = {
@@ -191,27 +223,33 @@ def main():
         }
     }
     
-    # Load both gunboat and press mode data
-    gunboat_usage = load_token_usage('games/bedrock_mix_press_score_000')
-    press_usage = load_token_usage('games/bedrock_mix_press_score_003')
+    # Load game data
+    gunboat_usage = load_token_usage('games/archive/bedrock_mix_gunboat_000')
+    press_full_usage = load_token_usage('games/archive/bedrock_mix_press_score_003')
+    press_opt_usage = load_token_usage('games/20251201_new_bedrock_mix_press_000')
     
-    if gunboat_usage and press_usage:
+    if gunboat_usage and press_full_usage and press_opt_usage:
         print("\n" + "="*80)
         print("COST ESTIMATES (20-year game)")
         print("="*80)
         
-        print(f"\n{'Preset':<40} {'Press Mode':>15} {'Gunboat Mode':>15}")
-        print("-" * 70)
+        print(f"\n{'Preset':<40} {'Full Press':>13} {'Optimized':>13} {'Gunboat':>13}")
+        print("-" * 80)
         
         for preset_name, preset_config in presets.items():
             if 'all' in preset_config:
                 # Free model
-                press_cost = 0.0
-                gunboat_cost = 0.0
+                full_cost = opt_cost = gunboat_cost = 0.0
             else:
-                press_cost = calculate_preset_cost(
-                    press_usage['total_input'],
-                    press_usage['total_output'],
+                full_cost = calculate_preset_cost(
+                    press_full_usage['total_input'],
+                    press_full_usage['total_output'],
+                    preset_config,
+                    pricing
+                )
+                opt_cost = calculate_preset_cost(
+                    press_opt_usage['total_input'],
+                    press_opt_usage['total_output'],
                     preset_config,
                     pricing
                 )
@@ -222,7 +260,7 @@ def main():
                     pricing
                 )
             
-            print(f"{preset_name:<40} ${press_cost:>14.2f} ${gunboat_cost:>14.2f}")
+            print(f"{preset_name:<40} ${full_cost:>12.2f} ${opt_cost:>12.2f} ${gunboat_cost:>12.2f}")
     
     print("\n" + "="*80)
 

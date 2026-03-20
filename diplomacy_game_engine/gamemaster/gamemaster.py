@@ -144,6 +144,30 @@ class Gamemaster:
         if gunboat_mode:
             logger.info("GUNBOAT MODE ENABLED - No press/communication allowed")
     
+    def _get_press_rounds_for_year(self, year: int, season: Season) -> int:
+        """
+        Get number of press rounds based on year (cost optimization).
+        
+        Args:
+            year: Current game year
+            season: Current season
+            
+        Returns:
+            Number of press rounds for this phase
+        """
+        # Spring 1901 special case
+        if year == 1901 and season == Season.SPRING:
+            return self.press_rounds_spring_1901
+        
+        # Year-based optimization (loaded from .env)
+        if year <= 1905:
+            return int(os.getenv('PRESS_ROUNDS_YEAR_1_5', '3'))
+        elif year <= 1910:
+            return int(os.getenv('PRESS_ROUNDS_YEAR_6_10', '2'))
+        else:
+            # After year 10, no new press
+            return int(os.getenv('PRESS_ROUNDS_AFTER_10', '0'))
+    
     def _update_scoring_report(self):
         """Regenerate scoring report with current game state."""
         try:
@@ -255,11 +279,8 @@ class Gamemaster:
         
         # Press rounds (skip if gunboat mode)
         if self.phase_manager.needs_press_phase(self.state.season) and not self.gunboat_mode:
-            # Determine number of press rounds based on year and season
-            if self.state.year == 1901 and self.state.season == Season.SPRING:
-                press_rounds = self.press_rounds_spring_1901
-            else:
-                press_rounds = self.press_rounds_default
+            # Determine number of press rounds based on year
+            press_rounds = self._get_press_rounds_for_year(self.state.year, self.state.season)
             
             for round_num in range(1, press_rounds + 1):
                 logger.info(f"\n--- Press Round {round_num}/{press_rounds} ---")
@@ -586,6 +607,10 @@ class Gamemaster:
         # Update scoring report after winter phase
         self._update_scoring_report()
         
+        # Generate static press summary at year 10 (for cost optimization)
+        if self.state.year == 1910:
+            self._generate_static_press_summary()
+        
         # Check victory before advancing
         winner = self.phase_manager.check_victory(self.state)
         
@@ -593,3 +618,69 @@ class Gamemaster:
         self.phase_manager.advance_phase(self.state, False)
         
         return winner
+    
+    def _generate_static_press_summary(self):
+        """Generate a one-time static summary of press history at year 10."""
+        if not self.summarizer:
+            return
+        
+        logger.info("\n--- Generating Static Press Summary (Year 10) ---")
+        
+        # Collect all press threads from years 1-10
+        all_press = {}
+        for p1 in Power:
+            for p2 in Power:
+                if p1 != p2:
+                    thread_key = f"{p1.value.lower()}_{p2.value.lower()}"
+                    content = self.press_system.get_thread_content(p1, p2)
+                    if content:
+                        all_press[thread_key] = content
+        
+        # Create comprehensive summary prompt
+        prompt = f"""You are analyzing a Diplomacy game after 10 years of play. 
+Create a CONCISE summary of the key diplomatic relationships and agreements that have formed.
+
+Focus on:
+- Major alliances and their stability
+- Key betrayals or broken agreements
+- Long-standing non-aggression pacts
+- Strategic partnerships
+
+Keep it under 500 words - this will be used as context for future order generation.
+
+Press Activity Summary (Years 1-10):
+"""
+        
+        for thread_key, content in all_press.items():
+            # Count messages in this thread
+            message_count = content.count('[')
+            if message_count > 5:  # Only include significant threads
+                prompt += f"\n{thread_key}: {message_count} messages exchanged"
+        
+        try:
+            summary, token_usage = self.bedrock_client.invoke_model(
+                model_id=self.summarizer.model_id,
+                prompt=prompt,
+                max_tokens=1024,
+                temperature=0.7
+            )
+            
+            # Save static summary
+            summary_path = os.path.join(self.game_folder, "press_history_summary.txt")
+            with open(summary_path, 'w') as f:
+                f.write(summary)
+            
+            logger.info(f"Static press summary saved: {summary_path}")
+            
+            # Log token usage
+            if self.token_tracker:
+                self.token_tracker.log_usage(
+                    phase="Winter 1910",
+                    call_type="static_press_summary",
+                    power="Summarizer",
+                    model_id=self.summarizer.model_id,
+                    token_usage=token_usage
+                )
+        
+        except Exception as e:
+            logger.error(f"Error generating static press summary: {e}")
