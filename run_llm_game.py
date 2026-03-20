@@ -249,6 +249,17 @@ def main():
         else:
             winner = gamemaster.run_game()
         
+        # Generate scoring report
+        logger.info("")
+        logger.info("="*60)
+        logger.info("GENERATING SCORING REPORT")
+        logger.info("="*60)
+        
+        from diplomacy_game_engine.scoring import GameScorer
+        scorer = GameScorer(game_folder)
+        scoring_report_path = scorer.save_report()
+        logger.info(f"Scoring report saved: {scoring_report_path}")
+        
         # Report results
         if not args.test_spring_fall and not args.test_full_year:
             logger.info("")

@@ -15,60 +15,8 @@ logger = logging.getLogger(__name__)
 class TokenTracker:
     """Tracks token usage across all LLM calls in a game."""
     
-    # Model pricing (per 1M tokens) - Based on OpenRouter pricing
-    MODEL_PRICING = {
-        # Anthropic Claude models
-        "claude-sonnet-4-5": {"input": 3.00, "output": 15.00},
-        "claude-haiku-4-5": {"input": 1.00, "output": 5.00},
-        "claude-3-5-sonnet": {"input": 3.00, "output": 15.00},
-        "claude-3-5-haiku": {"input": 0.80, "output": 4.00},
-        "claude-3-haiku": {"input": 0.25, "output": 1.25},
-        "claude-3-sonnet": {"input": 3.00, "output": 15.00},
-        "claude-3-opus": {"input": 15.00, "output": 75.00},
-        
-        # Google Gemini models
-        "gemini-2-5-pro": {"input": 1.25, "output": 10.00},
-        "gemini-2-5-flash": {"input": 0.30, "output": 2.50},
-        "gemini-2-5-flash-lite": {"input": 0.10, "output": 0.40},
-        "gemini-pro": {"input": 1.25, "output": 10.00},  # Alias for 2.5 Pro
-        "gemini-flash": {"input": 0.30, "output": 2.50},  # Alias for 2.5 Flash
-        
-        # OpenAI GPT models
-        "gpt-5": {"input": 1.25, "output": 10.00},
-        "gpt-5-1": {"input": 1.25, "output": 10.00},
-        "gpt-5-mini": {"input": 0.25, "output": 2.00},
-        "gpt-5-1-mini": {"input": 0.25, "output": 2.00},
-        "gpt-5-1-codex": {"input": 1.25, "output": 10.00},
-        "gpt-5-1-codex-mini": {"input": 0.25, "output": 2.00},
-        
-        # xAI Grok models
-        "grok-4": {"input": 3.00, "output": 15.00},
-        "grok-4-fast": {"input": 0.20, "output": 0.50},
-        "grok-code-fast": {"input": 0.20, "output": 1.50},
-        
-        # Meta Llama models
-        "llama-4-maverick": {"input": 0.15, "output": 0.60},
-        "llama-4-scout": {"input": 0.08, "output": 0.30},
-        "llama-3-3-70b": {"input": 0.15, "output": 0.60},  # Alias for Maverick
-        "llama-3-1-8b": {"input": 0.08, "output": 0.30},   # Alias for Scout
-        
-        # DeepSeek models
-        "deepseek-v3-1-terminus": {"input": 0.23, "output": 0.90},
-        "deepseek-r1-distill-llama-70b": {"input": 0.03, "output": 0.13},
-        "deepseek-r1-distill-qwen-32b": {"input": 0.27, "output": 0.27},
-        "deepseek-r1-distill-qwen-14b": {"input": 0.15, "output": 0.15},
-        "deepseek-v3": {"input": 0.23, "output": 0.90},  # Alias for Terminus
-        
-        # Mistral models
-        "mistral-large": {"input": 2.00, "output": 6.00},
-        "mistral-small-3": {"input": 0.05, "output": 0.08},
-        "mistral-small-3-2": {"input": 0.06, "output": 0.18},
-        
-        # Fallbacks
-        "claude-haiku": {"input": 1.00, "output": 5.00},
-        "claude-sonnet": {"input": 3.00, "output": 15.00},
-        "default": {"input": 1.00, "output": 5.00}
-    }
+    # Model pricing will be loaded from external JSON file
+    MODEL_PRICING = None
     
     def __init__(self, game_folder: str):
         """
@@ -81,10 +29,41 @@ class TokenTracker:
         self.csv_path = os.path.join(game_folder, "token_usage.csv")
         self.records: List[Dict] = []
         
+        # Load pricing if not already loaded
+        if TokenTracker.MODEL_PRICING is None:
+            TokenTracker.MODEL_PRICING = self._load_pricing()
+        
         # Initialize CSV file with headers
         self._initialize_csv()
         
         logger.info(f"Token tracker initialized: {self.csv_path}")
+    
+    def _load_pricing(self) -> Dict:
+        """Load model pricing from external JSON file."""
+        pricing_path = os.path.join(
+            os.path.dirname(__file__), '..', 'config', 'model_pricing.json'
+        )
+        
+        try:
+            with open(pricing_path, 'r') as f:
+                pricing_data = json.load(f)
+            
+            # Flatten the nested structure for easier lookup
+            flat_pricing = {}
+            for provider, models in pricing_data.items():
+                for model_key, model_data in models.items():
+                    flat_pricing[model_key] = {
+                        'input': model_data['input'],
+                        'output': model_data['output']
+                    }
+            
+            logger.info(f"Loaded pricing for {len(flat_pricing)} models")
+            return flat_pricing
+            
+        except Exception as e:
+            logger.error(f"Could not load pricing file: {e}")
+            # Return minimal fallback
+            return {"default": {"input": 1.0, "output": 5.0}}
     
     def _initialize_csv(self):
         """Create CSV file with headers."""
