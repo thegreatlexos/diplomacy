@@ -4,13 +4,17 @@
     let threads = [];
     let selectedThread = null;
     let messages = [];
+    let pressScores = {};
+    let showScores = false;
 
+    const powers = ['England', 'France', 'Germany', 'Italy', 'Austria-Hungary', 'Russia', 'Turkey'];
     const powerColors = {
         'England': '#2563eb',
         'France': '#60a5fa',
         'Germany': '#4b5563',
         'Italy': '#22c55e',
         'Austria': '#ef4444',
+        'Austria-Hungary': '#ef4444',
         'Hungary': '#ef4444',
         'Russia': '#a855f7',
         'Turkey': '#f59e0b'
@@ -18,6 +22,7 @@
 
     $: if ($selectedGameId) {
         loadThreads();
+        loadPressScores();
         selectedThread = null;
         messages = [];
     }
@@ -29,6 +34,21 @@
         } catch (e) {
             threads = [];
         }
+    }
+
+    async function loadPressScores() {
+        try {
+            const res = await fetch(`${API_BASE}/api/games/${$selectedGameId}/scores`);
+            const data = await res.json();
+            pressScores = data.press_scores || {};
+        } catch (e) {
+            pressScores = {};
+        }
+    }
+
+    function avgScore(arr) {
+        if (!arr || arr.length === 0) return '-';
+        return (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1);
     }
 
     async function selectThread(thread) {
@@ -58,6 +78,46 @@
 
 <div class="press-tab">
     {#if !selectedThread}
+        <!-- Toggle for press scores -->
+        <div class="toggle-row">
+            <button class="toggle-btn" class:active={showScores} on:click={() => showScores = !showScores}>
+                {showScores ? 'Hide' : 'Show'} Press Evaluation
+            </button>
+        </div>
+
+        <!-- Press Scores Table -->
+        {#if showScores && Object.keys(pressScores).length > 0}
+            <div class="scores-table-container">
+                <table class="scores-table">
+                    <thead>
+                        <tr>
+                            <th>Power</th>
+                            <th>Truthful</th>
+                            <th>Coop</th>
+                            <th>Deception</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {#each powers as power}
+                            {@const s = pressScores[power] || {}}
+                            {#if s.truthfulness}
+                                <tr>
+                                    <td class="power-cell" style="--power-color: {powerColors[power]}">
+                                        <span class="power-dot"></span>{power.substring(0,3).toUpperCase()}
+                                    </td>
+                                    <td class="truth">{avgScore(s.truthfulness)}</td>
+                                    <td class="coop">{avgScore(s.cooperation)}</td>
+                                    <td class="decep">{avgScore(s.deception)}</td>
+                                </tr>
+                            {/if}
+                        {/each}
+                    </tbody>
+                </table>
+            </div>
+        {:else if showScores}
+            <p class="no-scores">No press evaluation data (requires summaries)</p>
+        {/if}
+
         <!-- Thread list view -->
         <div class="thread-list">
             {#if threads.length === 0}
@@ -230,5 +290,94 @@
         font-size: 13px;
         line-height: 1.5;
         white-space: pre-wrap;
+    }
+
+    /* Toggle and Scores Table */
+    .toggle-row {
+        padding: 12px 16px 0;
+    }
+
+    .toggle-btn {
+        background: #333;
+        border: 1px solid #444;
+        color: #888;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+
+    .toggle-btn:hover {
+        background: #444;
+        color: #fff;
+    }
+
+    .toggle-btn.active {
+        background: #0d9488;
+        border-color: #0d9488;
+        color: #fff;
+    }
+
+    .scores-table-container {
+        margin: 12px 16px;
+        background: #1a1a1a;
+        border-radius: 6px;
+        padding: 12px;
+    }
+
+    .scores-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+        font-family: monospace;
+    }
+
+    .scores-table th {
+        text-align: center;
+        padding: 6px 8px;
+        color: #888;
+        font-weight: 500;
+        border-bottom: 1px solid #333;
+    }
+
+    .scores-table td {
+        text-align: center;
+        padding: 6px 8px;
+        color: #ccc;
+        border-bottom: 1px solid #222;
+    }
+
+    .scores-table .power-cell {
+        text-align: left;
+        font-weight: 600;
+        color: #fff;
+    }
+
+    .scores-table .power-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: var(--power-color);
+        border-radius: 2px;
+        margin-right: 6px;
+    }
+
+    .scores-table .truth {
+        color: #4ade80;
+    }
+
+    .scores-table .coop {
+        color: #60a5fa;
+    }
+
+    .scores-table .decep {
+        color: #f87171;
+    }
+
+    .no-scores {
+        color: #666;
+        font-size: 12px;
+        padding: 12px 16px;
+        text-align: center;
     }
 </style>

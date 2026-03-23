@@ -159,6 +159,7 @@ def get_orders(game_id: str, year: int, season: str):
     """Get orders for a specific phase."""
     game_dir = GAMES_DIR / game_id
     orders_dir = game_dir / "orders"
+    states_dir = game_dir / "states"
 
     # Find matching order file
     order_file = None
@@ -170,20 +171,81 @@ def get_orders(game_id: str, year: int, season: str):
     if not order_file or not order_file.exists():
         return []
 
+    # Load unit-to-power mapping from state file
+    unit_to_power = _get_unit_to_power_mapping(states_dir, year, season)
+
     with open(order_file) as f:
         data = yaml.safe_load(f)
 
     orders = []
     for order in data.get("orders", []):
+        unit = order.get("unit", "")
+        power = unit_to_power.get(unit, "Unknown")
         orders.append(Order(
-            unit=order.get("unit", ""),
+            unit=unit,
             action=order.get("action", ""),
             destination=order.get("destination"),
             supporting=order.get("supporting"),
-            power=_get_power_from_unit(order.get("unit", ""))
+            power=power
         ))
 
     return orders
+
+
+def _get_unit_to_power_mapping(states_dir: Path, year: int, season: str) -> Dict[str, str]:
+    """Get unit to power mapping from state file."""
+    # For Spring orders, look at the previous phase state
+    # For Fall orders, look at Spring state of same year
+    if season.lower() == "spring":
+        if year == 1901:
+            state_file = states_dir / "1901_00_initial.json"
+        else:
+            # Previous winter state
+            prev_year = year - 1
+            state_file = states_dir / f"{prev_year}_winter_after.json"
+    else:  # Fall
+        state_file = states_dir / f"{year}_spring_after.json"
+
+    # Fallback patterns if exact match not found
+    fallback_patterns = [
+        f"{year}_{season}_after.json",
+        f"{year-1}_winter_after.json" if season.lower() == "spring" else f"{year}_spring_after.json"
+    ]
+
+    if not state_file.exists():
+        # Try fallback patterns
+        for pattern in fallback_patterns:
+            candidate = states_dir / pattern
+            if candidate.exists():
+                state_file = candidate
+                break
+
+    if not state_file.exists():
+        return {}
+
+    try:
+        with open(state_file) as f:
+            state_data = json.load(f)
+
+        unit_to_power = {}
+        for unit in state_data.get("units", []):
+            unit_type = unit.get("unit_type", "")
+            location = unit.get("location", "")
+            power = unit.get("power", "")
+
+            # Build unit string (e.g., "F NTH")
+            unit_prefix = "F" if unit_type == "Fleet" else "A"
+            unit_str = f"{unit_prefix} {location}"
+
+            # Add multiple case variants to handle case sensitivity issues
+            unit_to_power[unit_str] = power  # Original case
+            unit_to_power[f"{unit_prefix} {location.upper()}"] = power  # Uppercase
+            unit_to_power[f"{unit_prefix} {location.lower()}"] = power  # Lowercase
+            unit_to_power[f"{unit_prefix} {location.title()}"] = power  # Title case
+
+        return unit_to_power
+    except Exception:
+        return {}
 
 
 def _get_power_from_unit(unit: str) -> str:
@@ -291,6 +353,67 @@ def get_summary(game_id: str, year: int, season: str):
         content = f.read()
 
     return {"content": content}
+
+
+@app.get("/api/games/{game_id}/yearly-metrics")
+def get_yearly_metrics(game_id: str):
+    """Get per-year metrics (SC counts and precision) for a game."""
+    game_dir = GAMES_DIR / game_id
+
+    # Try to load yearly_metrics.json
+    metrics_file = game_dir / "yearly_metrics.json"
+    if metrics_file.exists():
+        with open(metrics_file) as f:
+            return json.load(f)
+
+    # Fallback: return empty if not available
+    return {"sc_counts": {}, "precision": {}}
+
+
+@app.get("/api/games/{game_id}/model-assignments")
+def get_model_assignments(game_id: str):
+    """Get model assignments for a game."""
+    game_dir = GAMES_DIR / game_id
+    assignments_file = game_dir / "model_assignments.json"
+
+    if not assignments_file.exists():
+        raise HTTPException(status_code=404, detail="Model assignments not found")
+
+    with open(assignments_file) as f:
+        return json.load(f)
+
+
+@app.get("/api/games/{game_id}/scores")
+def get_scores(game_id: str):
+    """Get precision and press evaluation scores for a game."""
+    import sys
+    sys.path.insert(0, str(GAMES_DIR.parent))
+
+    from diplomacy_game_engine.scoring import GameScorer
+
+    game_path = GAMES_DIR / game_id
+    if not game_path.exists():
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    try:
+        scorer = GameScorer(str(game_path))
+        scorer.calculate_performance_scores()
+        scorer.calculate_precision_scores()
+        scorer.extract_press_scores()
+
+        return {
+            "precision": getattr(scorer, 'precision_counts', {}),
+            "precision_scores": scorer.precision_scores,
+            "press_scores": scorer.press_scores,
+            "performance_scores": scorer.performance_scores,
+            "sc_details": scorer.sc_details,
+            # New metrics
+            "strategic_metrics": getattr(scorer, 'strategic_metrics', {}),
+            "complexity_scores": getattr(scorer, 'complexity_scores', {}),
+            "error_rates": getattr(scorer, 'error_rates', {}),
+        }
+    except Exception as e:
+        return {"error": str(e), "precision": {}, "press_scores": {}}
 
 
 if __name__ == "__main__":

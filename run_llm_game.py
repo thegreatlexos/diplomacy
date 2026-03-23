@@ -68,11 +68,12 @@ def save_model_assignments(
     player_models: Dict[Power, str],
     summarizer_model: str,
     platform: str,
-    randomized: bool
+    randomized: bool,
+    gunboat_mode: bool = False
 ):
     """
     Save model assignments to JSON file for tracking.
-    
+
     Args:
         game_folder: Root folder for game files
         game_id: Game identifier
@@ -80,14 +81,16 @@ def save_model_assignments(
         summarizer_model: Summarizer model ID
         platform: Platform being used (bedrock/openrouter)
         randomized: Whether assignments were randomized
+        gunboat_mode: Whether gunboat mode (no press) is enabled
     """
     assignments = {
         "game_id": game_id,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "platform": platform,
         "randomized": randomized,
+        "gunboat_mode": gunboat_mode,
         "assignments": {
-            power.value: model_id 
+            power.value: model_id
             for power, model_id in player_models.items()
         },
         "summarizer": summarizer_model
@@ -158,7 +161,8 @@ def main():
         player_models=player_models,
         summarizer_model=summarizer_model,
         platform=model_platform,
-        randomized=randomize
+        randomized=randomize,
+        gunboat_mode=args.gun_boat
     )
     
     logger.info("="*60)

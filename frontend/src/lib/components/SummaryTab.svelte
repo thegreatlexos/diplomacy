@@ -36,6 +36,21 @@
 
 <script context="module">
     function formatMarkdown(text) {
+        // Handle tables first (before other processing)
+        text = text.replace(/(\|[^\n]+\|\n)+/g, (tableBlock) => {
+            const rows = tableBlock.trim().split('\n');
+            let html = '<table>';
+            rows.forEach((row, idx) => {
+                // Skip separator row (|---|---|)
+                if (/^\|[\s-:|]+\|$/.test(row)) return;
+                const cells = row.split('|').filter(c => c.trim() !== '');
+                const tag = idx === 0 ? 'th' : 'td';
+                html += '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
+            });
+            html += '</table>';
+            return html;
+        });
+
         // Basic markdown to HTML conversion
         return text
             // Headers
@@ -133,5 +148,33 @@
     .summary-content :global(pre code) {
         background: none;
         padding: 0;
+    }
+
+    .summary-content :global(table) {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0;
+        font-size: 12px;
+    }
+
+    .summary-content :global(th),
+    .summary-content :global(td) {
+        border: 1px solid #333;
+        padding: 8px;
+        text-align: left;
+    }
+
+    .summary-content :global(th) {
+        background: #1a1a1a;
+        color: #fff;
+        font-weight: 600;
+    }
+
+    .summary-content :global(td) {
+        color: #ccc;
+    }
+
+    .summary-content :global(tr:nth-child(even)) {
+        background: #1a1a1a;
     }
 </style>

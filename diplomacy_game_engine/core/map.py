@@ -128,6 +128,20 @@ class Map:
             self.adjacencies[to_abbr][from_abbr] = []
         self.adjacencies[to_abbr][from_abbr].append((to_coast, from_coast))
     
+    def _normalize_abbr(self, abbr: str) -> str:
+        """Normalize province abbreviation to match stored format."""
+        # Strip coast suffix if present (e.g., "Spa/nc" -> "Spa")
+        if '/' in abbr:
+            abbr = abbr.split('/')[0]
+
+        if abbr in self.provinces:
+            return abbr
+        if abbr.upper() in self.provinces:
+            return abbr.upper()
+        if abbr.title() in self.provinces:
+            return abbr.title()
+        return abbr  # Return as-is if no match found
+
     def is_adjacent(
         self,
         from_abbr: str,
@@ -136,17 +150,21 @@ class Map:
         to_coast: Optional[Coast] = None
     ) -> bool:
         """Check if two provinces are adjacent, considering coasts if specified."""
+        # Normalize abbreviations to handle case differences
+        from_abbr = self._normalize_abbr(from_abbr)
+        to_abbr = self._normalize_abbr(to_abbr)
+
         if from_abbr not in self.adjacencies:
             return False
         if to_abbr not in self.adjacencies[from_abbr]:
             return False
-        
+
         adjacency_list = self.adjacencies[from_abbr][to_abbr]
-        
+
         # If no coasts specified, just check if any adjacency exists
         if from_coast is None and to_coast is None:
             return len(adjacency_list) > 0
-        
+
         # Check if the specific coast combination exists
         return (from_coast, to_coast) in adjacency_list
     
@@ -159,18 +177,19 @@ class Map:
         Get all provinces adjacent to the given province.
         Returns list of province abbreviations (simplified for test compatibility).
         """
+        abbr = self._normalize_abbr(abbr)
         if abbr not in self.adjacencies:
             return []
-        
+
         result = []
         for adj_abbr, coast_pairs in self.adjacencies[abbr].items():
             for fc, tc in coast_pairs:
                 if from_coast is None or fc == from_coast:
                     if adj_abbr not in result:  # Avoid duplicates
                         result.append(adj_abbr)
-        
+
         return result
-    
+
     def get_adjacent_provinces_with_coasts(
         self,
         abbr: str,
@@ -180,9 +199,10 @@ class Map:
         Get all provinces adjacent to the given province with coast information.
         Returns list of (province_abbr, coast) tuples.
         """
+        abbr = self._normalize_abbr(abbr)
         if abbr not in self.adjacencies:
             return []
-        
+
         result = []
         for adj_abbr, coast_pairs in self.adjacencies[abbr].items():
             for fc, tc in coast_pairs:
@@ -192,8 +212,21 @@ class Map:
         return result
     
     def get_province(self, abbr: str) -> Optional[Province]:
-        """Get a province by its abbreviation."""
-        return self.provinces.get(abbr)
+        """Get a province by its abbreviation (case-insensitive)."""
+        # Strip coast suffix if present (e.g., "Spa/nc" -> "Spa")
+        if '/' in abbr:
+            abbr = abbr.split('/')[0]
+
+        # Try exact match first
+        if abbr in self.provinces:
+            return self.provinces[abbr]
+        # Try uppercase (sea zones like NWG, ION, BOT, BLA)
+        if abbr.upper() in self.provinces:
+            return self.provinces[abbr.upper()]
+        # Try title case (land provinces like Lon, Par, Ber)
+        if abbr.title() in self.provinces:
+            return self.provinces[abbr.title()]
+        return None
     
     def get_all_provinces(self) -> List[Province]:
         """Get all provinces in the map."""
