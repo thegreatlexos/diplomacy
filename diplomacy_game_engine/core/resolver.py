@@ -119,12 +119,12 @@ class MovementResolver:
         # Check for move to same location (illegal)
         if unit.location == order.destination:
             return False
-        
+
         # Get destination province
         dest_province = self.game_map.get_province(order.destination)
         if dest_province is None:
             return False
-        
+
         # Check unit type compatibility with destination
         if unit.unit_type == UnitType.ARMY:
             # Armies cannot move to sea provinces unless via convoy
@@ -134,18 +134,44 @@ class MovementResolver:
             # Fleets can move to sea provinces and coastal provinces, but not pure land provinces
             if dest_province.is_land() and not dest_province.is_coastal():
                 return False
-        
-        # If not via convoy, check adjacency
-        if not order.via_convoy:
-            if not self.game_map.is_adjacent(
-                unit.location,
-                order.destination,
-                unit.coast,
-                order.dest_coast
-            ):
-                return False
-        
-        return True
+
+        # Check adjacency - but for armies, also check if there's a convoy supporting this move
+        is_adjacent = self.game_map.is_adjacent(
+            unit.location,
+            order.destination,
+            unit.coast,
+            order.dest_coast
+        )
+
+        if is_adjacent:
+            return True
+
+        # Not adjacent - check if this could be a convoy move
+        if unit.unit_type == UnitType.ARMY:
+            # Auto-detect convoy: check if any fleet is ordering to convoy this army
+            has_convoy_support = self._has_matching_convoy_order(unit, order.destination)
+            if has_convoy_support:
+                # Mark this order as via convoy for later processing
+                order.via_convoy = True
+                return True
+
+        # Fleet can't convoy, army has no convoy support - illegal move
+        return False
+
+    def _has_matching_convoy_order(self, army: Unit, destination: str) -> bool:
+        """Check if there's at least one fleet ordering to convoy this army to this destination."""
+        # Normalize for case-insensitive comparison
+        army_loc_norm = self.game_map._normalize_abbr(army.location)
+        dest_norm = self.game_map._normalize_abbr(destination)
+
+        for unit_id, order in self.orders.items():
+            if isinstance(order, ConvoyOrder):
+                # Check if this convoy order matches our army and destination
+                convoy_army_loc = self.game_map._normalize_abbr(order.convoyed_army_location)
+                convoy_dest = self.game_map._normalize_abbr(order.destination)
+                if convoy_army_loc == army_loc_norm and convoy_dest == dest_norm:
+                    return True
+        return False
     
     def _get_illegal_move_reason(self, unit: Unit, order: MoveOrder) -> str:
         """Get a human-readable reason why a move is illegal."""
@@ -596,23 +622,24 @@ class MovementResolver:
                             dislodged_units.append(dislodged)
                             new_state.remove_unit(defender.get_id())
                     
-                    # Move the unit
+                    # Move the unit - normalize destination for consistent storage
                     new_state.remove_unit(unit_id)
+                    normalized_dest = self.game_map._normalize_abbr(destination)
                     new_unit = Unit(
                         attempt.unit.power,
                         attempt.unit.unit_type,
-                        destination,
+                        normalized_dest,
                         attempt.dest_coast
                     )
                     new_state.add_unit(new_unit)
-                    
-                    move_results[unit_id] = f"Successfully moved to {destination}"
-                    
+
+                    move_results[unit_id] = f"Successfully moved to {normalized_dest}"
+
                     # Update supply center ownership if applicable (only in Fall)
                     if self.game_state.season == Season.FALL:
-                        province = self.game_map.get_province(destination)
+                        province = self.game_map.get_province(normalized_dest)
                         if province and province.is_supply_center:
-                            new_state.set_sc_owner(destination, attempt.unit.power)
+                            new_state.set_sc_owner(normalized_dest, attempt.unit.power)
                 
                 elif attempt.is_bounced:
                     move_results[unit_id] = f"Bounced from {destination}"
@@ -683,10 +710,12 @@ class RetreatResolver:
             if len(units) == 1:
                 # Single unit retreats successfully
                 dislodged = units[0]
+                # Normalize destination for consistent storage
+                normalized_dest = self.game_state.game_map._normalize_abbr(dest)
                 new_unit = Unit(
                     dislodged.unit.power,
                     dislodged.unit.unit_type,
-                    dest,
+                    normalized_dest,
                     None  # TODO: Handle coast for retreats
                 )
                 new_state.add_unit(new_unit)
@@ -729,12 +758,14 @@ class WinterResolver:
                 for build_order in power_builds:
                     if builds_applied >= builds_needed:
                         break
-                    
+
                     if build_order.is_valid(new_state):
+                        # Normalize location for consistent storage
+                        normalized_loc = self.game_state.game_map._normalize_abbr(build_order.location)
                         new_unit = Unit(
                             build_order.power,
                             build_order.unit_type,
-                            build_order.location,
+                            normalized_loc,
                             build_order.coast
                         )
                         new_state.add_unit(new_unit)

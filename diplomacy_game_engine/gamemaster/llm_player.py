@@ -168,11 +168,12 @@ class LLMPlayer:
             orders = OrderParser.parse_orders(response, self.power)
             
             # Auto-hold for units without orders
+            # Use case-insensitive comparison to avoid duplicate orders
             your_units = state.get_units_by_power(self.power)
-            units_with_orders = {order.unit.location for order in orders}
-            
+            units_with_orders = {order.unit.location.upper() for order in orders}
+
             for unit in your_units:
-                if unit.location not in units_with_orders:
+                if unit.location.upper() not in units_with_orders:
                     from diplomacy_game_engine.core.orders import HoldOrder
                     hold_order = HoldOrder(unit)
                     orders.append(hold_order)

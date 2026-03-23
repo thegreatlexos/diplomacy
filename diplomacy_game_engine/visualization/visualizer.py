@@ -84,9 +84,35 @@ PROVINCE_POSITIONS = {
 }
 
 
+def _normalize_position_key(key: str) -> str:
+    """Normalize province key for PROVINCE_POSITIONS lookup (handles case sensitivity)."""
+    if key in PROVINCE_POSITIONS:
+        return key
+    # Try uppercase (sea zones like NTH, ION, etc.)
+    if key.upper() in PROVINCE_POSITIONS:
+        return key.upper()
+    # Try title case (land provinces like Lon, Par, etc.)
+    if key.title() in PROVINCE_POSITIONS:
+        return key.title()
+    # Handle coast notation (e.g., "stp/nc" -> "StP/nc")
+    if '/' in key:
+        base, coast = key.split('/', 1)
+        normalized_base = base.upper() if base.upper() in PROVINCE_POSITIONS else base.title()
+        coast_key = f"{normalized_base}/{coast}"
+        if coast_key in PROVINCE_POSITIONS:
+            return coast_key
+    return key
+
+
+def _get_position(key: str):
+    """Get position from PROVINCE_POSITIONS with case normalization."""
+    normalized = _normalize_position_key(key)
+    return PROVINCE_POSITIONS.get(normalized)
+
+
 class MapVisualizer:
     """Visualizes Diplomacy game state on a simplified map."""
-    
+
     def __init__(self, game_state: GameState, figsize=(16, 10), base_image_path=None):
         self.state = game_state
         self.base_image_path = base_image_path
@@ -222,23 +248,25 @@ class MapVisualizer:
         radius = 22 if self.base_image is not None else 2.5
         
         for prov_abbr, power in self.state.supply_centers.items():
-            if prov_abbr in PROVINCE_POSITIONS:
-                x, y = PROVINCE_POSITIONS[prov_abbr]
+            pos = _get_position(prov_abbr)
+            if pos:
+                x, y = pos
                 color = POWER_COLORS.get(power, '#CCCCCC')
-                
+
                 # Draw semi-transparent circle for territory control
                 circle = Circle((x, y), radius, color=color, alpha=0.4, zorder=1)
                 self.ax.add_patch(circle)
-    
+
     def _draw_supply_centers(self):
         """Draw supply center markers."""
         # Scale size based on coordinate system (scaled for 915×767 image)
         size = 6 if self.base_image is not None else 1.2
         half_size = size / 2
-        
+
         for province in self.state.game_map.get_supply_centers():
-            if province.abbreviation in PROVINCE_POSITIONS:
-                x, y = PROVINCE_POSITIONS[province.abbreviation]
+            pos = _get_position(province.abbreviation)
+            if pos:
+                x, y = pos
                 
                 # Draw small square for supply center
                 square = patches.Rectangle(
@@ -260,11 +288,12 @@ class MapVisualizer:
             position_key = unit.location
             if unit.coast:
                 coast_key = f"{unit.location}/{unit.coast.value}"
-                if coast_key in PROVINCE_POSITIONS:
+                if _get_position(coast_key):
                     position_key = coast_key
-            
-            if position_key in PROVINCE_POSITIONS:
-                x, y = PROVINCE_POSITIONS[position_key]
+
+            pos = _get_position(position_key)
+            if pos:
+                x, y = pos
                 color = POWER_COLORS.get(unit.power, '#CCCCCC')
                 
                 if unit.unit_type == UnitType.ARMY:
@@ -294,14 +323,14 @@ class MapVisualizer:
         
         # BuildOrder doesn't have a unit attribute, handle it separately
         if isinstance(order, BuildOrder):
-            build_pos = PROVINCE_POSITIONS.get(order.location)
+            build_pos = _get_position(order.location)
             if build_pos:
                 self._draw_build_indicator(build_pos)
             return
         
         # DisbandOrder - draw red X
         if isinstance(order, DisbandOrder):
-            unit_pos = PROVINCE_POSITIONS.get(order.unit.location)
+            unit_pos = _get_position(order.unit.location)
             if unit_pos:
                 self._draw_disband_indicator(unit_pos)
             return
@@ -310,13 +339,13 @@ class MapVisualizer:
         position_key = order.unit.location
         if order.unit.coast:
             coast_key = f"{order.unit.location}/{order.unit.coast.value}"
-            if coast_key in PROVINCE_POSITIONS:
+            if _get_position(coast_key):
                 position_key = coast_key
-        
-        unit_pos = PROVINCE_POSITIONS.get(position_key)
+
+        unit_pos = _get_position(position_key)
         if not unit_pos:
             return
-        
+
         if isinstance(order, HoldOrder):
             self._draw_hold_order(unit_pos)
         elif isinstance(order, MoveOrder):
@@ -324,10 +353,10 @@ class MapVisualizer:
             dest_key = order.destination
             if order.dest_coast:
                 coast_dest_key = f"{order.destination}/{order.dest_coast.value}"
-                if coast_dest_key in PROVINCE_POSITIONS:
+                if _get_position(coast_dest_key):
                     dest_key = coast_dest_key
-            
-            target_pos = PROVINCE_POSITIONS.get(dest_key)
+
+            target_pos = _get_position(dest_key)
             if target_pos:
                 # Check if this move was illegal (resulted in "Held position")
                 unit_id = order.unit.get_id()
@@ -344,7 +373,7 @@ class MapVisualizer:
             # Draw wavy line indicator above the convoying fleet
             self._draw_convoy_indicator(unit_pos)
         elif isinstance(order, SupportOrder):
-            supported_pos = PROVINCE_POSITIONS.get(order.supported_unit_location)
+            supported_pos = _get_position(order.supported_unit_location)
             if not supported_pos:
                 return
             
@@ -362,7 +391,7 @@ class MapVisualizer:
                 
             if order.destination:
                 # Support for move - draw two-segment arrow: supporting unit -> supported unit -> destination
-                target_pos = PROVINCE_POSITIONS.get(order.destination)
+                target_pos = _get_position(order.destination)
                 if target_pos:
                     self._draw_support_move_order(unit_pos, supported_pos, target_pos, use_red=use_red)
             else:
@@ -594,15 +623,15 @@ class MapVisualizer:
                 start_key = unit.location
                 if unit.coast:
                     coast_key = f"{unit.location}/{unit.coast.value}"
-                    if coast_key in PROVINCE_POSITIONS:
+                    if _get_position(coast_key):
                         start_key = coast_key
                 
                 # Extract destination from result string
                 # Format: "Bounced from {destination}"
                 dest = result_str.split('from ')[-1]
                 
-                start_pos = PROVINCE_POSITIONS.get(start_key)
-                end_pos = PROVINCE_POSITIONS.get(dest)
+                start_pos = _get_position(start_key)
+                end_pos = _get_position(dest)
                 
                 if start_pos and end_pos:
                     self._draw_arrow(start_pos, end_pos, solid=True, arrowhead=True, color='red')
@@ -612,7 +641,7 @@ class MapVisualizer:
         radius = 25 if self.base_image is not None else 2.5
         
         for dislodged in dislodged_units:
-            unit_pos = PROVINCE_POSITIONS.get(dislodged.dislodged_from)
+            unit_pos = _get_position(dislodged.dislodged_from)
             if unit_pos:
                 x, y = unit_pos
                 # Draw thick red circle around the dislodged unit
@@ -643,7 +672,7 @@ class MapVisualizer:
             if not unit:
                 continue
             
-            unit_pos = PROVINCE_POSITIONS.get(unit.location)
+            unit_pos = _get_position(unit.location)
             if unit_pos:
                 x, y = unit_pos
                 # Draw red X
@@ -662,8 +691,8 @@ class MapVisualizer:
         for order in orders_to_draw:
             if isinstance(order, RetreatOrder):
                 unit = order.unit
-                start_pos = PROVINCE_POSITIONS.get(unit.location)
-                end_pos = PROVINCE_POSITIONS.get(order.destination)
+                start_pos = _get_position(unit.location)
+                end_pos = _get_position(order.destination)
                 
                 if start_pos and end_pos:
                     # Draw orange arrow for retreat
@@ -737,10 +766,10 @@ class MapVisualizer:
                 position_key = unit.location
                 if unit.coast:
                     coast_key = f"{unit.location}/{unit.coast.value}"
-                    if coast_key in PROVINCE_POSITIONS:
+                    if _get_position(coast_key):
                         position_key = coast_key
-                
-                unit_pos = PROVINCE_POSITIONS.get(position_key)
+
+                unit_pos = _get_position(position_key)
                 if unit_pos:
                     self._draw_hold_order(unit_pos)
     

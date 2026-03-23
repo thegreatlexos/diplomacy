@@ -27,6 +27,12 @@ class OrderParser:
         'stp': 'StP', 'petersburg': 'StP', 'st.petersburg': 'StP',
         'bul': 'Bul', 'bulgaria': 'Bul',
     }
+
+    # Sea zones should be uppercase (matching map.py definitions)
+    SEA_ZONES = {
+        'nth', 'nwg', 'bar', 'bot', 'ska', 'hel', 'bal', 'eng', 'iri',
+        'mao', 'nao', 'wes', 'lyo', 'tys', 'ion', 'adr', 'aeg', 'eas', 'bla'
+    }
     
     @staticmethod
     def parse_orders(response: str, power: Power) -> List[Order]:
@@ -203,23 +209,26 @@ class OrderParser:
     def _normalize_province(province: str) -> str:
         """Normalize province name/abbreviation."""
         province = province.strip()
-        
+
         # Remove coast notation for lookup
         base_province = province.split('/')[0]
-        
-        # Check aliases
+
+        # Check aliases first
         lower_prov = base_province.lower()
         if lower_prov in OrderParser.PROVINCE_ALIASES:
             base_province = OrderParser.PROVINCE_ALIASES[lower_prov]
+        # Sea zones should be uppercase (NTH, NWG, ION, etc.)
+        elif lower_prov in OrderParser.SEA_ZONES:
+            base_province = base_province.upper()
         else:
-            # Capitalize first letter
+            # Land provinces are title case (Lon, Par, Ber)
             base_province = base_province.capitalize()
-        
+
         # Re-add coast if present
         if '/' in province:
             coast_part = province.split('/')[1]
             return f"{base_province}/{coast_part}"
-        
+
         return base_province
     
     @staticmethod

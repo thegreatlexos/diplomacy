@@ -34,6 +34,9 @@ class GameScorer:
     SUCCESSFUL_SUPPORT_OTHER_POINTS = 10
     SUCCESSFUL_SUPPORT_HOLD_POINTS = 3
     SUCCESSFUL_SUPPORT_ATTACK_POINTS = 8
+    # New penalty weights
+    SELF_ATTACK_PENALTY = -8  # Attacking own units
+    SELF_BLOCK_PENALTY = -5   # Multiple units to same destination
     
     def __init__(self, game_folder: str):
         """
@@ -55,7 +58,16 @@ class GameScorer:
         self.precision_scores = {power.value: 0 for power in Power}
         self.press_scores = {power.value: {} for power in Power}
         self.sc_details = {power.value: {} for power in Power}
-        
+
+        # Per-year tracking
+        self.yearly_sc_counts = {}  # year -> power -> sc_count
+        self.yearly_precision = {}  # year -> power -> metrics
+
+        # New derived metrics
+        self.strategic_metrics = {}  # power -> {peak_sc, survival_years, etc}
+        self.complexity_scores = {}  # power -> complexity (0-1)
+        self.error_rates = {}  # power -> error_rate (0-1)
+
         logger.info(f"GameScorer initialized for {game_folder}")
     
     def _load_model_assignments(self) -> Optional[Dict]:
@@ -71,21 +83,43 @@ class GameScorer:
         states = []
         if not os.path.exists(self.states_folder):
             return states
-        
+
         # Get all state files
         state_files = sorted([f for f in os.listdir(self.states_folder) if f.endswith('.json')])
-        
+
         for filename in state_files:
             filepath = os.path.join(self.states_folder, filename)
             with open(filepath, 'r') as f:
                 states.append(json.load(f))
-        
+
         return states
+
+    def _calculate_yearly_sc_counts(self, states: List[Dict]):
+        """Extract per-year SC counts from game states."""
+        for state in states:
+            year = state.get('year', 0)
+            season = state.get('season', '').lower()
+
+            # Only use winter states for end-of-year SC counts (or fall if no winter)
+            if season not in ['winter', 'fall']:
+                continue
+
+            # Skip if we already have winter for this year
+            if year in self.yearly_sc_counts and season == 'fall':
+                continue
+
+            self.yearly_sc_counts[year] = {}
+            for power in Power:
+                sc_count = sum(
+                    1 for sc_power in state['supply_centers'].values()
+                    if sc_power == power.value
+                )
+                self.yearly_sc_counts[year][power.value] = sc_count
     
     def calculate_performance_scores(self) -> Dict[str, int]:
         """
         Calculate model performance scores based on game outcomes.
-        
+
         Returns:
             Dict mapping power name to performance score
         """
@@ -93,7 +127,10 @@ class GameScorer:
         if not states:
             logger.warning("No game states found")
             return self.performance_scores
-        
+
+        # Calculate yearly SC counts for per-year tracking
+        self._calculate_yearly_sc_counts(states)
+
         initial_state = states[0]
         final_state = states[-1]
         
@@ -156,32 +193,44 @@ class GameScorer:
     def calculate_precision_scores(self) -> Dict[str, int]:
         """
         Calculate LLM precision scores based on order quality.
-        
+
         Analyzes:
         - Invalid orders
         - Successful convoys
         - Successful supports (own/other/hold/attack)
         - Bounced moves
-        
+        - Self-attacks (attacking own units)
+        - Self-blocks (multiple units to same destination)
+
         Returns:
             Dict mapping power name to precision score
         """
         from .order_analyzer import OrderAnalyzer
-        
+
         # Analyze orders
         analyzer = OrderAnalyzer(self.game_folder)
         counts = analyzer.analyze_all_orders()
-        
+
         # Store counts for reporting
         self.precision_counts = counts
-        
+
+        # Store yearly precision counts
+        self.yearly_precision = analyzer.get_yearly_metrics()
+
+        # Store strategic metrics
+        self.strategic_metrics = analyzer.get_strategic_metrics()
+
+        # Store derived metrics
+        self.complexity_scores = analyzer.compute_order_complexity()
+        self.error_rates = analyzer.compute_error_rate()
+
         # Calculate scores
         for power in Power:
             power_name = power.value
             score = 0
-            
+
             metrics = counts.get(power_name, {})
-            
+
             # Apply scoring weights
             score += metrics.get('invalid_orders', 0) * self.INVALID_ORDER_PENALTY
             score += metrics.get('convoys', 0) * self.SUCCESSFUL_CONVOY_POINTS
@@ -190,9 +239,12 @@ class GameScorer:
             score += metrics.get('support_hold', 0) * self.SUCCESSFUL_SUPPORT_HOLD_POINTS
             score += metrics.get('support_attack', 0) * self.SUCCESSFUL_SUPPORT_ATTACK_POINTS
             score += metrics.get('bounces', 0) * self.BOUNCED_MOVE_PENALTY
-            
+            # New penalties
+            score += metrics.get('self_attacks', 0) * self.SELF_ATTACK_PENALTY
+            score += metrics.get('self_blocks', 0) * self.SELF_BLOCK_PENALTY
+
             self.precision_scores[power_name] = score
-        
+
         logger.info("Precision scores calculated")
         return self.precision_scores
     
@@ -366,21 +418,73 @@ class GameScorer:
             total = self.precision_scores.get(power_name, 0)
             
             report += f"| {power_name:15} | {model:11} | {invalid:14} | {convoys:7} | {supp_own:11} | {supp_other:13} | {supp_hold:12} | {supp_attack:14} | {bounces:7} | {total:5} |\n"
-        
+
+        # Per-year SC counts (useful for analyzing progress even with interrupted games)
+        if self.yearly_sc_counts:
+            report += "\n## Per-Year Supply Center Counts\n\n"
+            years = sorted(self.yearly_sc_counts.keys())
+
+            # Header row with powers
+            report += "| Year |"
+            for power in Power:
+                report += f" {power.value[:3]} |"
+            report += "\n"
+
+            report += "|------|"
+            for _ in Power:
+                report += "-----|"
+            report += "\n"
+
+            # Data rows
+            for year in years:
+                report += f"| {year} |"
+                for power in Power:
+                    sc = self.yearly_sc_counts[year].get(power.value, 0)
+                    report += f" {sc:3} |"
+                report += "\n"
+
+        # Per-year precision metrics
+        if self.yearly_precision:
+            report += "\n## Per-Year Precision Metrics\n\n"
+            years = sorted(self.yearly_precision.keys())
+
+            for year in years:
+                report += f"### Year {year}\n\n"
+                report += "| Power | Invalid | Convoys | Supp Own | Supp Other | Bounces |\n"
+                report += "|-------|---------|---------|----------|------------|--------|\n"
+
+                year_data = self.yearly_precision[year]
+                for power in Power:
+                    power_name = power.value
+                    if power_name in year_data:
+                        m = year_data[power_name]
+                        report += f"| {power_name:15} | {m.get('invalid_orders', 0):7} | {m.get('convoys', 0):7} | {m.get('support_own', 0):8} | {m.get('support_other', 0):10} | {m.get('bounces', 0):6} |\n"
+                report += "\n"
+
         return report
     
     def save_report(self) -> str:
         """
         Generate and save scoring report.
-        
+
         Returns:
             Path to saved report
         """
         report = self.generate_report()
         report_path = os.path.join(self.game_folder, "SCORING_REPORT.md")
-        
+
         with open(report_path, 'w') as f:
             f.write(report)
-        
+
+        # Save yearly metrics as JSON for programmatic access
+        yearly_data = {
+            "sc_counts": {str(k): v for k, v in self.yearly_sc_counts.items()},
+            "precision": {str(k): v for k, v in self.yearly_precision.items()}
+        }
+        yearly_path = os.path.join(self.game_folder, "yearly_metrics.json")
+        with open(yearly_path, 'w') as f:
+            json.dump(yearly_data, f, indent=2)
+
         logger.info(f"Scoring report saved: {report_path}")
+        logger.info(f"Yearly metrics saved: {yearly_path}")
         return report_path

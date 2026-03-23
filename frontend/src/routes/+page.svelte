@@ -4,6 +4,7 @@
     import OrdersTab from '$lib/components/OrdersTab.svelte';
     import PressTab from '$lib/components/PressTab.svelte';
     import SummaryTab from '$lib/components/SummaryTab.svelte';
+    import YearlyScoresTab from '$lib/components/YearlyScoresTab.svelte';
     import { selectedGameId, currentPhase, API_BASE } from '$lib/stores.js';
 
     let activeTab = 'orders';
@@ -67,6 +68,13 @@
                     >
                         Summary
                     </button>
+                    <button
+                        class="tab"
+                        class:active={activeTab === 'yearly'}
+                        on:click={() => activeTab = 'yearly'}
+                    >
+                        Yearly
+                    </button>
                 </div>
 
                 <div class="tab-content">
@@ -76,6 +84,8 @@
                         <PressTab />
                     {:else if activeTab === 'summary'}
                         <SummaryTab />
+                    {:else if activeTab === 'yearly'}
+                        <YearlyScoresTab />
                     {/if}
                 </div>
             </div>
