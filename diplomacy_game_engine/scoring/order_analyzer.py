@@ -76,9 +76,12 @@ class OrderAnalyzer:
         # Initialize per-year counters
         self.yearly_counts = {}  # year -> power -> metrics
     
-    def analyze_all_orders(self) -> Dict[str, Dict[str, int]]:
+    def analyze_all_orders(self, max_year: Optional[int] = None) -> Dict[str, Dict[str, int]]:
         """
         Analyze all order files in the game.
+
+        Args:
+            max_year: If provided, only analyze orders up to this year (inclusive)
 
         Returns:
             Dict mapping power name to precision counts
@@ -94,6 +97,11 @@ class OrderAnalyzer:
         ])
 
         for filename in order_files:
+            # Filter by max_year if specified
+            if max_year is not None:
+                year = self._extract_year(filename)
+                if year is not None and year > max_year:
+                    continue
             filepath = os.path.join(self.orders_folder, filename)
             self._analyze_order_file(filepath)
 
