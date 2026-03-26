@@ -446,6 +446,7 @@ def create_standard_map() -> Map:
         ("Nap", "ION", None, None),
         ("Apu", "ADR", None, None),
         ("Apu", "ION", None, None),
+        ("Apu", "Ven", None, None),
         ("Pie", "Tus", None, None),
         ("Pie", "Tyr", None, None),
         ("Pie", "Mar", None, None),

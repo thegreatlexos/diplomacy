@@ -1,7 +1,0 @@
-phase: Spring 1901
-game_id: test_game
-orders:
-- unit: F StP
-  action: build
-- unit: A War
-  action: disband

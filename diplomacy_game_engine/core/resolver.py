@@ -95,6 +95,10 @@ class MovementResolver:
             if isinstance(order, MoveOrder):
                 # Validate the move before creating attempt
                 if self._is_move_legal(unit, order):
+                    # Normalize destination for grouping (strip coast suffix)
+                    # e.g., "Bul/sc" -> "Bul" so all moves to Bulgaria compete
+                    dest_key = self.game_map._normalize_abbr(order.destination)
+
                     attempt = MoveAttempt(
                         unit=unit,
                         origin=unit.location,
@@ -102,10 +106,10 @@ class MovementResolver:
                         dest_coast=order.dest_coast,
                         via_convoy=order.via_convoy
                     )
-                    
-                    if order.destination not in self.moves_to_province:
-                        self.moves_to_province[order.destination] = []
-                    self.moves_to_province[order.destination].append(attempt)
+
+                    if dest_key not in self.moves_to_province:
+                        self.moves_to_province[dest_key] = []
+                    self.moves_to_province[dest_key].append(attempt)
                 else:
                     # Track illegal move order
                     reason = self._get_illegal_move_reason(unit, order)
@@ -340,40 +344,97 @@ class MovementResolver:
                         # (The attack must be legal since it was added to moves_to_province)
                         self.cut_supports.add(unit_id)
                         break
-    
+
+    def _resolve_head_to_head_battles(self) -> None:
+        """
+        Resolve head-to-head battles where A -> B and B -> A.
+        In Diplomacy, when two units try to swap places:
+        - If equal strength, both bounce
+        - If one has more strength, it succeeds and dislodges the other
+        """
+        # Find all head-to-head pairs
+        processed = set()
+
+        for dest_a, attempts_a in self.moves_to_province.items():
+            if dest_a in processed:
+                continue
+
+            for attempt_a in attempts_a:
+                if attempt_a.via_convoy or attempt_a.is_successful or attempt_a.is_bounced:
+                    continue
+
+                origin_a = attempt_a.origin
+
+                # Check if there's a move from dest_a back to origin_a
+                if origin_a in self.moves_to_province:
+                    for attempt_b in self.moves_to_province[origin_a]:
+                        if attempt_b.via_convoy or attempt_b.is_successful or attempt_b.is_bounced:
+                            continue
+
+                        # Check if this is a head-to-head (B's origin is A's destination)
+                        if attempt_b.origin == dest_a:
+                            # Head-to-head found: A (origin_a -> dest_a) vs B (dest_a -> origin_a)
+                            strength_a = attempt_a.strength
+                            strength_b = attempt_b.strength
+
+                            if strength_a > strength_b:
+                                # A wins, B bounces
+                                attempt_a.is_successful = True
+                                attempt_b.is_bounced = True
+                            elif strength_b > strength_a:
+                                # B wins, A bounces
+                                attempt_b.is_successful = True
+                                attempt_a.is_bounced = True
+                            else:
+                                # Equal strength - both bounce
+                                attempt_a.is_bounced = True
+                                attempt_b.is_bounced = True
+
+                            processed.add(dest_a)
+                            processed.add(origin_a)
+                            break
+
     def _determine_outcomes(self) -> None:
         """Determine which moves succeed, fail, or bounce."""
-        # First pass: determine outcomes for non-convoy moves
-        # We need to resolve moves iteratively because head-to-head situations
+        # First pass: resolve head-to-head battles (A -> B and B -> A)
+        self._resolve_head_to_head_battles()
+
+        # Second pass: determine outcomes for non-convoy moves
+        # We need to resolve moves iteratively because some situations
         # require knowing if the defender's move succeeds
-        
+
         # Track which moves we've already resolved
         resolved_destinations = set()
-        
+
         # Keep iterating until all moves are resolved
         max_iterations = 100  # Safety limit
         iteration = 0
-        
+
         while len(resolved_destinations) < len(self.moves_to_province) and iteration < max_iterations:
             iteration += 1
             made_progress = False
-            
+
             for destination, attempts in self.moves_to_province.items():
                 if destination in resolved_destinations:
                     continue
-                
+
                 if len(attempts) == 0:
                     resolved_destinations.add(destination)
                     continue
-                
+
                 # Skip convoy moves in first pass
                 if all(a.via_convoy for a in attempts):
                     continue
-                
+
+                # Skip already resolved attempts (from head-to-head)
+                if all(a.is_successful or a.is_bounced for a in attempts if not a.via_convoy):
+                    resolved_destinations.add(destination)
+                    continue
+
                 # Get the defending unit (if any)
                 defender = self.game_state.get_unit_at(destination)
                 defense_strength = 0  # Default to 0 if no defender
-                
+
                 # Check if defender is moving out successfully
                 defender_moving_out_successfully = False
                 if defender:
@@ -381,13 +442,18 @@ class MovementResolver:
                     defender_order = self.orders.get(defender_id)
                     if isinstance(defender_order, MoveOrder) and self._is_move_legal(defender, defender_order):
                         # Defender has a legal move order - check if destination is resolved
-                        defender_dest = defender_order.destination
+                        # Normalize destination to match moves_to_province keys
+                        defender_dest = self.game_map._normalize_abbr(defender_order.destination)
                         if defender_dest in self.moves_to_province:
                             # Check if defender's destination has been resolved
                             if defender_dest not in resolved_destinations:
-                                # Can't resolve this yet - need to know if defender's move succeeds
-                                continue
-                            
+                                # Check if this is already resolved via head-to-head
+                                defender_attempts = self.moves_to_province[defender_dest]
+                                defender_resolved = all(a.is_successful or a.is_bounced for a in defender_attempts if not a.via_convoy)
+                                if not defender_resolved:
+                                    # Can't resolve this yet - need to know if defender's move succeeds
+                                    continue
+
                             # Check if defender's move succeeded
                             for defender_attempt in self.moves_to_province[defender_dest]:
                                 if defender_attempt.unit.get_id() == defender_id:
@@ -603,7 +669,8 @@ class MovementResolver:
                         
                         if isinstance(defender_order, MoveOrder) and self._is_move_legal(defender, defender_order):
                             # Defender is moving out - check if their move succeeded
-                            defender_dest = defender_order.destination
+                            # Normalize destination to match moves_to_province keys
+                            defender_dest = self.game_map._normalize_abbr(defender_order.destination)
                             if defender_dest in self.moves_to_province:
                                 for defender_attempt in self.moves_to_province[defender_dest]:
                                     if defender_attempt.unit.get_id() == defender_id and defender_attempt.is_successful:
@@ -775,14 +842,32 @@ class WinterResolver:
                 # Must disband units
                 disbands_needed = unit_count - sc_count
                 power_units = new_state.get_units_by_power(power)
-                
+
                 # Use specified disband orders if available
                 power_disband_orders = self.disband_orders.get(power.value, [])
-                
+
                 units_to_disband = []
                 # First, disband units specified in orders
                 for unit_id in power_disband_orders:
+                    # Try direct lookup first
                     unit = new_state.units.get(unit_id)
+
+                    # If not found, parse unit_id to extract location and find by location
+                    # unit_id format: "{power}_{unit_type[0]}_{location}_{coast}_{counter}"
+                    if unit is None:
+                        parts = unit_id.split('_')
+                        if len(parts) >= 3:
+                            # Extract location (could be like "Boh" or "StP" or include coast)
+                            # The location is the 3rd part (index 2)
+                            location = parts[2]
+                            # Normalize location
+                            location = self.game_state.game_map._normalize_abbr(location)
+                            # Find unit at this location belonging to this power
+                            for u in power_units:
+                                if u.location == location and u not in units_to_disband:
+                                    unit = u
+                                    break
+
                     if unit and len(units_to_disband) < disbands_needed:
                         units_to_disband.append(unit)
                 

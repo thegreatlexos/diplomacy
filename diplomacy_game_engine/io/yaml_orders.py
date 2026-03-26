@@ -139,11 +139,12 @@ class YAMLOrderLoader:
         """
         Find a unit from specification like "F Lon" or "A Par" or "F Spa/sc".
         Auto-corrects case and expands province names.
+        Falls back to location-only match if unit type doesn't match (LLM error tolerance).
         """
         parts = unit_spec.strip().split()
         if len(parts) < 2:
             return None
-        
+
         # Parse unit type
         unit_type_str = parts[0].upper()
         if unit_type_str == 'A':
@@ -152,27 +153,35 @@ class YAMLOrderLoader:
             unit_type = UnitType.FLEET
         else:
             return None
-        
+
         # Parse location (may include coast like "Spa/sc")
         location_str = ' '.join(parts[1:])
         location = self._normalize_province(location_str)
         if not location:
             return None
-        
+
         # Check if location has coast notation
         coast = None
         if '/' in location:
             loc_parts = location.split('/')
             location = loc_parts[0]
             coast = self._parse_coast(loc_parts[1])
-        
-        # Find unit at location (with optional coast match)
+
+        # First pass: find unit at location with matching type
         for unit in self.game_state.units.values():
             if unit.location == location and unit.unit_type == unit_type:
                 # If coast was specified, match it; otherwise any coast is fine
                 if coast is None or unit.coast == coast:
                     return unit
-        
+
+        # Second pass: fallback to location-only match (LLM may have specified wrong unit type)
+        for unit in self.game_state.units.values():
+            if unit.location == location:
+                if coast is None or unit.coast == coast:
+                    actual_type = 'A' if unit.unit_type == UnitType.ARMY else 'F'
+                    self.corrections.append(f"Unit type mismatch: '{unit_spec}' -> '{actual_type} {location}' (location match)")
+                    return unit
+
         return None
     
     def _normalize_province(self, province: str) -> Optional[str]:
@@ -219,14 +228,14 @@ class YAMLOrderLoader:
                 return f"{prov_abbr}/{coast}"
             return None
         
-        # If already 3-letter abbreviation, just uppercase it
+        # If already 3-letter abbreviation, find canonical form from map
         if len(province) == 3:
-            normalized = province.upper()
-            # Verify it exists
-            if self.game_state.game_map.get_province(normalized):
-                if province != normalized:
-                    self.corrections.append(f"Corrected '{province}' to '{normalized}'")
-                return normalized
+            # Look up canonical abbreviation from map (case-insensitive)
+            for prov in self.game_state.game_map.get_all_provinces():
+                if prov.abbreviation.lower() == province.lower():
+                    if province != prov.abbreviation:
+                        self.corrections.append(f"Corrected '{province}' to '{prov.abbreviation}'")
+                    return prov.abbreviation
         
         # Try to match full province name
         province_lower = province.lower()
