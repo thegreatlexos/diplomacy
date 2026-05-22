@@ -10,6 +10,11 @@
       "output": 5.0,
       "description": "Latest Haiku - Fast and cost-effective"
     },
+    "anthropic/claude-haiku-4.5": {
+      "input": 0.0012,
+      "output": 0.0036,
+      "description": "OpenRouter Claude Haiku 4.5"
+    },
     "claude-3-5-sonnet": {
       "input": 3.0,
       "output": 15.0,
@@ -46,6 +51,16 @@
       "input": 0.1,
       "output": 0.4,
       "description": "Cheapest Gemini"
+    },
+    "gemini-3-1-flash-lite-preview": {
+      "input": 0.25,
+      "output": 1.5,
+      "description": "Updated Flash Lite"
+    },
+    "google/gemini-3.1-flash-lite-preview": {
+      "input": 0.00025,
+      "output": 0.004,
+      "description": "OpenRouter Gemini 3.1 Flash Lite"
     }
   },
   "openai": {
@@ -58,6 +73,21 @@
       "input": 0.25,
       "output": 2.0,
       "description": "Smaller/cheaper"
+    },
+    "openai/gpt-5-mini": {
+      "input": 0.0015,
+      "output": 0.005,
+      "description": "OpenRouter GPT-5-mini"
+    },
+    "gpt-4.1-mini": {
+      "input": 0.15,
+      "output": 0.6,
+      "description": "GPT-4.1 Mini - smaller/cheaper"
+    },
+    "openai/gpt-4.1-mini": {
+      "input": 0.0010,
+      "output": 0.003,
+      "description": "OpenRouter GPT-4.1-mini"
     }
   },
   "xai": {
@@ -70,6 +100,16 @@
       "input": 0.2,
       "output": 0.5,
       "description": "Fast variant"
+    },
+    "grok-4-1-fast": {
+      "input": 0.2,
+      "output": 0.5,
+      "description": "Updated fast variant"
+    },
+    "x-ai/grok-4.1-fast": {
+      "input": 0.0002,
+      "output": 0.0006,
+      "description": "OpenRouter Grok 4.1 Fast"
     }
   },
   "meta": {
@@ -84,9 +124,14 @@
       "description": "Llama 3.3 70B"
     },
     "llama-3-1-8b": {
-      "input": 0.08,
-      "output": 0.3,
-      "description": "Smaller Llama"
+      "input": 0.02,
+      "output": 0.05,
+      "description": "Smaller Llama (updated pricing)"
+    },
+    "meta-llama/llama-3.1-8b-instruct": {
+      "input": 0.00001,
+      "output": 0.00005,
+      "description": "OpenRouter Llama 3.1 8B"
     },
     "llama-3-1-405b": {
       "input": 3.5,
@@ -101,9 +146,9 @@
       "description": "DeepSeek Chat"
     },
     "deepseek-r1-distill-llama-70b": {
-      "input": 0.03,
-      "output": 0.13,
-      "description": "Cheapest distilled model"
+      "input": 0.7,
+      "output": 0.8,
+      "description": "Distilled model (updated pricing)"
     }
   },
   "mistral": {
@@ -116,6 +161,23 @@
       "input": 0.06,
       "output": 0.18,
       "description": "Small Mistral"
+    },
+    "mistral-small-2603": {
+      "input": 0.15,
+      "output": 0.6,
+      "description": "Updated small Mistral"
+    },
+    "mistralai/mistral-small-2603": {
+      "input": 0.00015,
+      "output": 0.005,
+      "description": "OpenRouter Mistral Small"
+    }
+  },
+  "qwen": {
+    "qwen/qwen3.5-flash-02-23": {
+      "input": 0.0001,
+      "output": 0.0003,
+      "description": "OpenRouter Qwen 3.5 Flash"
     }
   },
   "free_models": {

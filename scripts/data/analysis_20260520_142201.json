@@ -1,0 +1,233 @@
+{
+  "anthropic_tiers": {
+    "budget": {
+      "avg_rank": 5.359375,
+      "std_rank": 0.977442144150379,
+      "win_rate": 0.0,
+      "top3_rate": 9.375,
+      "avg_survival": 11.875,
+      "n": 32
+    },
+    "mid": {
+      "avg_rank": 3.5,
+      "std_rank": 1.8247704606449966,
+      "win_rate": 12.5,
+      "top3_rate": 52.083333333333336,
+      "avg_survival": 17.104166666666668,
+      "n": 48
+    },
+    "premium": {
+      "avg_rank": 3.390625,
+      "std_rank": 1.9081082296685983,
+      "win_rate": 31.25,
+      "top3_rate": 50.0,
+      "avg_survival": 18.03125,
+      "n": 32
+    }
+  },
+  "provider_battle_mid": {
+    "anthropic": {
+      "avg_rank": 3.5,
+      "std_rank": 1.8247704606449966,
+      "win_rate": 12.5,
+      "top3_rate": 52.083333333333336,
+      "avg_survival": 17.104166666666668,
+      "n": 48,
+      "models": [
+        "Sonnet-4.6"
+      ]
+    },
+    "xai": {
+      "avg_rank": 1.4166666666666667,
+      "std_rank": 0.6645800679125629,
+      "win_rate": 66.66666666666666,
+      "top3_rate": 100.0,
+      "avg_survival": 18.333333333333332,
+      "n": 6,
+      "models": [
+        "Grok-4.1-fast"
+      ]
+    },
+    "mistral": {
+      "avg_rank": 3.75,
+      "std_rank": 1.5732132722552274,
+      "win_rate": 0.0,
+      "top3_rate": 33.33333333333333,
+      "avg_survival": 17.166666666666668,
+      "n": 6,
+      "models": [
+        "Mistral-Small"
+      ]
+    },
+    "google": {
+      "avg_rank": 2.3333333333333335,
+      "std_rank": 1.4023789311975086,
+      "win_rate": 33.33333333333333,
+      "top3_rate": 66.66666666666666,
+      "avg_survival": 18.333333333333332,
+      "n": 6,
+      "models": [
+        "Gemini-Flash"
+      ]
+    },
+    "qwen": {
+      "avg_rank": 4.666666666666667,
+      "std_rank": 1.7795130420052185,
+      "win_rate": 0.0,
+      "top3_rate": 33.33333333333333,
+      "avg_survival": 17.166666666666668,
+      "n": 6,
+      "models": [
+        "Qwen-Flash"
+      ]
+    },
+    "openai": {
+      "avg_rank": 4.833333333333333,
+      "std_rank": 1.7795130420052185,
+      "win_rate": 0.0,
+      "top3_rate": 33.33333333333333,
+      "avg_survival": 15.166666666666666,
+      "n": 6,
+      "models": [
+        "GPT-4.1-mini"
+      ]
+    }
+  },
+  "provider_battle_premium": {
+    "anthropic": {
+      "avg_rank": 3.442857142857143,
+      "std_rank": 1.935623583102403,
+      "win_rate": 28.57142857142857,
+      "top3_rate": 51.42857142857142,
+      "avg_survival": 17.228571428571428,
+      "n": 35,
+      "models": [
+        "Opus-4.6",
+        "Opus-4.7"
+      ]
+    },
+    "openai": {
+      "avg_rank": 1.6666666666666667,
+      "std_rank": 1.1547005383792517,
+      "win_rate": 66.66666666666666,
+      "top3_rate": 100.0,
+      "avg_survival": 8.666666666666666,
+      "n": 3,
+      "models": [
+        "GPT-5.5"
+      ]
+    },
+    "xai": {
+      "avg_rank": 3.8333333333333335,
+      "std_rank": 1.2583057392117916,
+      "win_rate": 0.0,
+      "top3_rate": 33.33333333333333,
+      "avg_survival": 8.666666666666666,
+      "n": 3,
+      "models": [
+        "Grok-4.3"
+      ]
+    },
+    "deepseek": {
+      "avg_rank": 2.8333333333333335,
+      "std_rank": 2.0207259421636903,
+      "win_rate": 33.33333333333333,
+      "top3_rate": 66.66666666666666,
+      "avg_survival": 8.666666666666666,
+      "n": 3,
+      "models": [
+        "DeepSeek-v4-pro"
+      ]
+    },
+    "meta": {
+      "avg_rank": 5.5,
+      "std_rank": 0.8660254037844386,
+      "win_rate": 0.0,
+      "top3_rate": 0.0,
+      "avg_survival": 4.0,
+      "n": 3,
+      "models": [
+        "Llama-4-Maverick"
+      ]
+    },
+    "google": {
+      "avg_rank": 4.0,
+      "std_rank": 1.7320508075688772,
+      "win_rate": 0.0,
+      "top3_rate": 33.33333333333333,
+      "avg_survival": 8.666666666666666,
+      "n": 3,
+      "models": [
+        "Gemini-3.1-pro"
+      ]
+    },
+    "mistral": {
+      "avg_rank": 6.166666666666667,
+      "std_rank": 1.0408329997330663,
+      "win_rate": 0.0,
+      "top3_rate": 0.0,
+      "avg_survival": 3.0,
+      "n": 3,
+      "models": [
+        "Mistral-Large"
+      ]
+    }
+  },
+  "press_effectiveness": {
+    "budget": {
+      "gunboat_avg_rank": 4.956521739130435,
+      "press_avg_rank": 5.966666666666667,
+      "delta": -1.0101449275362322,
+      "gunboat_n": 23,
+      "press_n": 15
+    },
+    "mid": {
+      "gunboat_avg_rank": 3.644230769230769,
+      "press_avg_rank": 3.0961538461538463,
+      "delta": 0.5480769230769229,
+      "gunboat_n": 52,
+      "press_n": 26
+    },
+    "premium": {
+      "gunboat_avg_rank": 3.361111111111111,
+      "press_avg_rank": 3.7714285714285714,
+      "delta": -0.4103174603174602,
+      "gunboat_n": 18,
+      "press_n": 35
+    }
+  },
+  "temporal_dynamics": {
+    "budget": {
+      "early_avg_sc": 3.8684210526315788,
+      "late_avg_sc": 1.5,
+      "early_n": 190,
+      "late_n": 372
+    },
+    "mid": {
+      "early_avg_sc": 4.823076923076923,
+      "late_avg_sc": 5.9918144611186905,
+      "early_n": 390,
+      "late_n": 733
+    },
+    "premium": {
+      "early_avg_sc": 5.135021097046414,
+      "late_avg_sc": 6.308673469387755,
+      "early_n": 237,
+      "late_n": 392
+    }
+  },
+  "reasoning_comparison": {
+    "reasoning": {
+      "avg_rank": 3.268292682926829,
+      "avg_invalid_rate": 6.329268292682927,
+      "avg_complexity": 22.585365853658537,
+      "n": 41
+    },
+    "non_reasoning": {
+      "avg_rank": 4.223880597014926,
+      "avg_invalid_rate": 11.67686567164179,
+      "avg_complexity": 8.917164179104477,
+      "n": 134
+    }
+  }
+}
