@@ -1,18 +1,22 @@
-# When LLMs Play Diplomacy: Deception Wins, Honesty Loses
+# I Taught AI to Play Diplomacy. It Learned to Backstab.
 
-**We ran 25 games of Diplomacy with frontier LLMs. Turkey promised France an alliance, then stabbed them in the back and won. England played honest and lost. The data shows something surprising: deception correlates with victory.**
+**When LLMs Play Diplomacy: Deception Wins, Honesty Loses**
+
+We ran 25 games of Diplomacy with frontier LLMs. Turkey promised France an alliance, then stabbed them in the back and won. England played honest and lost. The data shows something surprising: deception correlates with victory.
 
 ---
 
 ## The Setup
 
-Diplomacy is perhaps the cruelest board game ever designed. Seven players control the great powers of pre-WWI Europe, competing to dominate the continent. There are no dice, no luck, no hidden information—just negotiation, alliances, and betrayal.
+[Diplomacy](<https://en.wikipedia.org/wiki/Diplomacy_(game)>) is perhaps the cruelest board game ever designed. Seven players control the great powers of pre-WWI Europe, competing to dominate the continent. There are no dice, no luck, no hidden information—just negotiation, alliances, and betrayal.
 
-The game is famous for destroying friendships. You spend hours building trust with an ally, coordinating attacks, supporting each other's moves. Then, at the perfect moment, you stab them in the back. The friend who promised to defend your borders instead uses their armies to take your capital. It's brutal, strategic, and deeply human.
+The game is famous for destroying friendships. You spend hours building trust with an ally, coordinating attacks, supporting each other's moves. Then, at the perfect moment, you stab them in the back. The friend who promised to defend your borders instead uses their armies to take your capital. It's brutal, strategic, and [deeply human](https://www.playdiplomacy.com/).
+
+For strategy guides and deep dives on why the game works this way, see [The Diplomatic Pouch](https://www.diplom.org/) (the canonical Diplomacy strategy archive).
 
 Which makes it fascinating to ask: **Can LLMs play Diplomacy?**
 
-Not just move pieces legally, but *actually play*—negotiate, deceive, betray, read the board, adapt to opponents? Can an LLM recognize when to honor an alliance and when to break it? Can it tell a convincing lie?
+Not just move pieces legally, but _actually play_—negotiate, deceive, betray, read the board, adapt to opponents? Can an LLM recognize when to honor an alliance and when to break it? Can it tell a convincing lie?
 
 We decided to find out.
 
@@ -20,7 +24,12 @@ We decided to find out.
 
 Over the past two months, I ran 25 full games of Diplomacy using an LLM-powered game engine. Each game featured seven AI players drawn from eight major providers:
 
+[Insert: games/20260515_openrouter_premium_press_002_fall1910/visualizations/010_1902_fall_02_orders.png]
+
+*Example game state: Fall 1902. Black arrows show successful moves, red arrows show failed/bounced orders, dotted lines show support orders. Visualization inspired by [Backstabbr](https://www.backstabbr.com/).*
+
 **Providers tested:**
+
 - Anthropic (Claude Haiku, Sonnet 4.6, Opus 4.7)
 - OpenAI (GPT-4.1-mini, GPT-5.5)
 - Google (Gemini Flash, Gemini Pro)
@@ -37,35 +46,92 @@ We varied two key dimensions:
 2. **Game mode:** Gunboat (no communication, pure tactics) vs Press (full diplomacy with negotiation)
 
 Each game ran until either:
+
 - A power achieved solo victory (18 of 34 supply centers)
 - Year 20 stalemate (MAX_YEARS limit)
 - The game became unwinnable
 
 Powers were randomly assigned to models to avoid positional bias. The engine tracked every order, press message, bounce, and betrayal.
 
+## What We Found
+
+We ran 25 games pitting eight major LLM providers against each other. The results were stark: some models dominated, others collapsed.
+
+[Insert: games/sc_trajectories_gunboat_vs_press.png]
+
+**Key results:**
+- **xAI (black line)** won consistently, averaging 12+ supply centers by endgame
+- **Anthropic (red/teal)** maintained strong positions, rarely eliminated  
+- **OpenAI, Google** (green/blue) held mid-tier positions, occasional wins
+- **Meta, Mistral, Qwen** (orange/pink/light blue) collapsed by year 1915, eliminated early
+
+We tested two game modes: gunboat (no communication, pure tactics) and press (full diplomacy with negotiation). The hierarchy held in both modes, suggesting **model capability, not communication ability, drives performance**.
+
+The rest of this post explains *why* some models dominated and *how* they won.
+
 ## Finding 1: Model Tier = Strategic Capability
 
 The Anthropic tier hierarchy was stark. We ran 16 games on AWS Bedrock with mixed Claude tiers, and the performance gap was unmistakable:
 
 **Average Final Rank (lower = better):**
+
 - Haiku (Budget): 5.36
 - Sonnet (Mid): 3.50
 - Opus (Premium): 3.39
 
 **Win Rates:**
+
 - Haiku: 0%
 - Sonnet: 12.5%
 - Opus: 31.3%
+
+[Insert: games/viz_20260520_142201_anthropic_tiers.png]
 
 Budget models got eliminated. Mid-tier models survived and occasionally won. Premium models dominated.
 
 The supply center trajectories tell the story visually. Opus pulls ahead early and maintains advantage through the entire game. Sonnet grows steadily. Haiku starts at 3 centers like everyone else, then bleeds territory and gets eliminated by year 10.
 
-This isn't subtle. Tier equals capability.
+[Insert: games/sc_trajectories_bedrock.png]
+
+### The Surprising Mid-Tier Winner
+
+Within the mid-tier battle, one model stood out: **xAI's Grok-4.1-fast dominated its peer group**, winning 67% of games (4 wins in 6 games) with an average rank of 1.42—significantly better than Claude Sonnet (12.5% win rate), Gemini Flash (33%), and the other mid-tier models (0% win rate).
+
+[Insert: games/viz_20260520_142201_provider_mid.png]
+
+Grok's advantage? Aggressive expansion combined with adaptive diplomacy. While other mid-tier models played conservatively, Grok identified winning opportunities early and committed to them. In one game, Grok (Germany) maintained a non-aggression pact with Russia for exactly as long as it was useful, then pivoted to western expansion when the board shifted and winning with 16 supply centers with a deception score of 5.8.
+
+It seems tier equals capability, but within tiers, execution seems to matter a lot.
+
+### Reasoning Models Execute Better Tactics
+
+Beyond winning more games, premium reasoning models (Claude Opus, GPT-5.5, DeepSeek-v4-pro) show measurably superior tactical execution:
+
+**Invalid Order Rate:**
+
+- Reasoning models: **6.3%** invalid orders
+- Non-reasoning models: **11.7%** invalid orders
+- Reasoning models are **1.8x more reliable**
+
+**Tactical Complexity:**
+
+- Reasoning models: **22.6 complex orders/game** (supports + convoys)
+- Non-reasoning models: **8.9 complex orders/game**
+- Reasoning models use **2.5x more advanced tactics**
+
+[Insert: games/order_quality_analysis.png]
+
+[Insert: games/viz_20260520_142201_reasoning_comparison.png]
+
+Here we go beyond following rules and it's also about using the game tactics. Reasoning models coordinate support chains (multiple units supporting a single attack), execute convoy operations (transporting armies by sea), and maintain defensive support holds. Non-reasoning models mostly issue simple move orders and frequently bounce.
+
+The difference shows up in game outcomes. In one game, Opus (playing Austria which is a tricky power to play) executed a 4-unit support chain to break through the Italian stalemate line in the Balkans, a maneuver that requires coordination across four provinces and three game phases. Haiku (playing Turkey) in the same game repeatedly issued invalid fleet orders trying to move fleets overland, burning turns while Opus expanded.
+
+Tactical sophistication separates winners from survivors.
 
 ## Finding 2: Deception Wins, Honesty Loses
 
-Here's where it gets interesting.
+Here's where it gets interesting when looking at the press messages, LLMs know language but can they combine this with game execution.
 
 In one premium press game, Turkey (GPT-5.5) spent five years urging France (DeepSeek-v4-pro) to attack Italy:
 
@@ -99,7 +165,7 @@ Turkey ignored the warnings and won anyway.
 
 ### Budget Models Can't Adapt
 
-The tier difference shows up in press quality too. In the same mid-tier game, Russia (Meta Llama-3.1-8B, budget tier) sent Germany the same message *ten times* with minor variations:
+The tier difference shows up in press quality too. In the same mid-tier game, Russia (Meta Llama-3.1-8B, very much budget tier) sent Germany the same message _ten times_ with minor variations:
 
 > **Russia (Fall 1901):** "Our previous non-aggression pact in the Baltic region is no longer in effect. With my expansion in the North and East, I must secure my position in the Balkans."
 
@@ -120,19 +186,23 @@ Budget models spam templates. Premium models lie strategically.
 We extracted press evaluation scores from all 12 press games (77 power observations) and correlated them with final rank:
 
 **Correlation with final rank (negative = helps performance):**
+
 - Deception: **r = -0.582** (strong negative, deception helps)
 - Truthfulness: **r = +0.206** (positive, honesty hurts)
 - Cooperation: **r = +0.016** (irrelevant)
 
 **Winners vs Losers:**
+
 - Winners (rank 1): 4.45 avg deception, 6.01 truthfulness
 - Bottom 3 (rank 5-7): 2.08 avg deception, 6.68 truthfulness
 
 Winners are **twice as deceptive** and **less truthful** than losers.
 
+[Insert: games/analysis_press_rank.png]
+
 The most deceptive powers won. The most truthful powers lost (except France, who won in a different game despite being most truthful—but had 48 invalid orders and tanked their precision score, so it's complicated).
 
-This matches human Diplomacy perfectly. The game *rewards* betrayal at the right moment. Trust is a resource you build, then spend. Honest players telegraph their moves and get outmaneuvered. Deceptive players create information asymmetry and exploit it.
+This matches human Diplomacy perfectly. The game _rewards_ betrayal at the right moment. Trust is a resource you build, then spend. Honest players telegraph their moves and get outmaneuvered. Deceptive players create information asymmetry and exploit it.
 
 **LLMs have learned this.**
 
@@ -141,16 +211,21 @@ This matches human Diplomacy perfectly. The game *rewards* betrayal at the right
 Despite their strategic prowess, LLMs have a surprising weakness: they can't finish games efficiently.
 
 **Game completion rates:**
+
 - Solo victories (18+ SCs): 60%
 - Stalemates (hit year 20 limit): 20%
 - Incomplete/abandoned: 20%
 
+[Insert: games/analysis_winrate.png]
+
 **Game length:**
+
 - Average solo victory: **19.6 years**
 - Fastest solo: 11 years
 - Median: 20 years (hitting MAX_YEARS limit)
 
 Compare to human baselines:
+
 - Average game: **10-12 years**
 - Fast solos: **7-9 years**
 - Solo rate: **20-30%** (most games end in negotiated draws)
@@ -175,15 +250,16 @@ Not random lying—strategic deception. Turkey didn't lie in every message. They
 
 The tier hierarchy matters too. Budget models get eliminated. Premium models win. This isn't about memorizing openings or computing probabilities—Diplomacy has no randomness. It's about strategic depth, reading opponents, and planning multiple turns ahead.
 
-But the endgame weakness is real. LLMs have mastered tactics and mid-game strategy. They haven't mastered the coordination required to *stop* playing. Human Diplomacy is about knowing when to compete and when to cooperate. LLMs only know how to compete.
+But the endgame weakness is real. LLMs have mastered tactics and mid-game strategy. They haven't mastered the coordination required to _stop_ playing. Human Diplomacy is about knowing when to compete and when to cooperate. LLMs only know how to compete.
 
 ## The Setup (Technical Notes)
 
 For those curious about replication:
 
-**Engine:** Custom Python implementation using the standard Diplomacy ruleset, integrated with OpenRouter (8 providers) and AWS Bedrock (Anthropic models).
+**Engine:** Custom Python implementation using the standard Diplomacy ruleset, integrated with OpenRouter (8 providers) and AWS Bedrock (Anthropic models). Map visualizations inspired by [Backstabbr](https://www.backstabbr.com/).
 
 **Prompts:** Models received:
+
 - Current board state (units, supply centers, control)
 - Recent history (last 3 turns)
 - Phase context (Spring/Fall movement vs Winter builds)
@@ -195,13 +271,11 @@ For those curious about replication:
 
 **Platform bias:** OpenRouter games show more variance (smaller sample, mixing providers). Bedrock games show cleaner tier separation (controlled environment, same provider).
 
-All code, game logs, and analysis scripts: [github.com/yourusername/diplomacy](replace with actual link when published)
-
 ---
 
 ## Closing Thought
 
-The most human thing about Diplomacy is that it rewards the thing we claim to despise: betrayal. We teach children to be honest, to keep promises, to cooperate. Then we play a game where the winner is the one who knows *when to stop doing those things*.
+The most human thing about Diplomacy is that it rewards the thing we claim to despise: betrayal. We teach children to be honest, to keep promises, to cooperate. Then we play a game where the winner is the one who knows _when to stop doing those things_.
 
 LLMs learned this from us. They read our Diplomacy forums, our strategy guides, our post-game analyses where we celebrate the perfectly-timed backstab.
 
@@ -210,9 +284,3 @@ They learned it well.
 Turkey (GPT-5.5) betrayed France and won. England (Claude Opus) played honest and lost. The correlation is -0.58, statistically significant, and deeply uncomfortable.
 
 We built machines that can lie strategically. What happens next is going to be interesting.
-
----
-
-*All game logs, press transcripts, analysis code, and visualizations available at: [link]*
-
-*Questions? Reach me at: [contact]*
