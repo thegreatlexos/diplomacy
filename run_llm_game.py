@@ -17,15 +17,59 @@ from diplomacy_game_engine.gamemaster.gamemaster import Gamemaster
 # Load environment variables
 load_dotenv()
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('llm_game.log'),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
+# Configure logging with separate error and debug logs
+def setup_logging(game_folder=None):
+    # Create formatters
+    detailed_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    simple_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+    # Create handlers
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(simple_formatter)
+
+    # Determine log file paths
+    if game_folder:
+        os.makedirs(game_folder, exist_ok=True)
+        game_log_path = os.path.join(game_folder, 'llm_game.log')
+        error_log_path = os.path.join(game_folder, 'error.log')
+    else:
+        game_log_path = 'llm_game.log'
+        error_log_path = 'error.log'
+
+    # General log file (INFO and above) - in game folder
+    file_handler = logging.FileHandler(game_log_path)
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(detailed_formatter)
+
+    # Error log file (ERROR and above only) - in game folder
+    error_handler = logging.FileHandler(error_log_path)
+    error_handler.setLevel(logging.ERROR)
+    error_handler.setFormatter(detailed_formatter)
+
+    # Debug log for OpenRouter issues (DEBUG and above) - in root for all games
+    debug_handler = logging.FileHandler('openrouter_debug.log')
+    debug_handler.setLevel(logging.DEBUG)
+    debug_handler.setFormatter(detailed_formatter)
+
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
+
+    # Clear existing handlers to avoid duplicates
+    root_logger.handlers.clear()
+
+    root_logger.addHandler(console_handler)
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(error_handler)
+
+    # Configure OpenRouter client for debug logging
+    openrouter_logger = logging.getLogger('diplomacy_game_engine.llm_routing.openrouter_client')
+    openrouter_logger.addHandler(debug_handler)
+    openrouter_logger.setLevel(logging.DEBUG)
+
+# Initial setup without game folder
+setup_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -137,7 +181,10 @@ def main():
     # Game configuration
     game_id = args.game_id if args.game_id != 'llm_game_001' else os.getenv('DEFAULT_GAME_ID', 'llm_game_001')
     game_folder = os.path.join("games", game_id)
-    
+
+    # Reconfigure logging to write to game folder
+    setup_logging(game_folder)
+
     # Load model assignments from environment
     player_models = {
         Power.ENGLAND: os.getenv('MODEL_ENGLAND', 'eu.anthropic.claude-haiku-4-5-20251001-v1:0'),
@@ -182,7 +229,10 @@ def main():
     if summarizer_model:
         logger.info("Season Summaries: ENABLED")
     logger.info("")
-    logger.info("Players: All using Claude Haiku")
+    logger.info("Player Model Assignments:")
+    for power, model_id in player_models.items():
+        model_short = model_id.split('/')[-1] if '/' in model_id else model_id
+        logger.info(f"  {power.value:15} -> {model_short}")
     logger.info("="*60)
     logger.info("")
     

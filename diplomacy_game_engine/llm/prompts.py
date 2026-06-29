@@ -584,6 +584,15 @@ Your units that need orders:
 Submit your orders now in a code block:
 
 ```orders
+[Your orders here - one per line, e.g.:
+A Ber - Kie
+F Den - Swe
+A Mun H]
+```
+
+**FOR REASONING MODELS:** After your strategic analysis, you MUST provide concrete orders. Your response must end with executable orders in the exact format above. Analysis without orders = failure.
+
+```orders
 F Bre - MAO
 A Par - Bur
 A Mar - Spa

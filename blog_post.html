@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>I Taught AI to Play Diplomacy. It Learned to Backstab.</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">I Taught AI to Play Diplomacy. It Learned to
+Backstab.</h1>
+</header>
+<h1 id="i-taught-ai-to-play-diplomacy.-it-learned-to-backstab.">I Taught
+AI to Play Diplomacy. It Learned to Backstab.</h1>
+<p><strong>When LLMs Play Diplomacy: Deception Wins, Honesty
+Loses</strong></p>
+<p>We ran 25 games of Diplomacy with frontier LLMs. Turkey promised
+France an alliance, then stabbed them in the back and won. England
+played honest and lost. The data shows something surprising: deception
+correlates with victory.</p>
+<hr />
+<h2 id="the-setup">The Setup</h2>
+<p><a
+href="https://en.wikipedia.org/wiki/Diplomacy_(game)">Diplomacy</a> is
+perhaps the cruelest board game ever designed. Seven players control the
+great powers of pre-WWI Europe, competing to dominate the continent.
+There are no dice, no luck, no hidden information—just negotiation,
+alliances, and betrayal.</p>
+<p>The game is famous for destroying friendships. You spend hours
+building trust with an ally, coordinating attacks, supporting each
+other’s moves. Then, at the perfect moment, you stab them in the back.
+The friend who promised to defend your borders instead uses their armies
+to take your capital. It’s brutal, strategic, and <a
+href="https://www.playdiplomacy.com/">deeply human</a>.</p>
+<p>For strategy guides and deep dives on why the game works this way,
+see <a href="https://www.diplom.org/">The Diplomatic Pouch</a> (the
+canonical Diplomacy strategy archive).</p>
+<p>Which makes it fascinating to ask: <strong>Can LLMs play
+Diplomacy?</strong></p>
+<p>Not just move pieces legally, but <em>actually play</em>—negotiate,
+deceive, betray, read the board, adapt to opponents? Can an LLM
+recognize when to honor an alliance and when to break it? Can it tell a
+convincing lie?</p>
+<p>We decided to find out.</p>
+<h2 id="the-experiment">The Experiment</h2>
+<p>Over the past two months, I ran 25 full games of Diplomacy using an
+LLM-powered game engine. Each game featured seven AI players drawn from
+eight major providers:</p>
+<p>[Insert:
+games/20260515_openrouter_premium_press_002_fall1910/visualizations/010_1902_fall_02_orders.png]</p>
+<p><em>Example game state: Fall 1902. Black arrows show successful
+moves, red arrows show failed/bounced orders, dotted lines show support
+orders. Visualization inspired by <a
+href="https://www.backstabbr.com/">Backstabbr</a>.</em></p>
+<p><strong>Providers tested:</strong></p>
+<ul>
+<li>Anthropic (Claude Haiku, Sonnet 4.6, Opus 4.7)</li>
+<li>OpenAI (GPT-4.1-mini, GPT-5.5)</li>
+<li>Google (Gemini Flash, Gemini Pro)</li>
+<li>xAI (Grok-4.1-fast, Grok-4.3)</li>
+<li>DeepSeek (v4-pro)</li>
+<li>Mistral (Small, Large)</li>
+<li>Meta (Llama-4-Maverick)</li>
+<li>Qwen (Flash)</li>
+</ul>
+<p>We varied two key dimensions:</p>
+<ol type="1">
+<li><p><strong>Model tier:</strong> Budget (Haiku, Llama-8B) vs Mid
+(Sonnet, GPT-4.1-mini) vs Premium (Opus, GPT-5.5, DeepSeek-pro)</p></li>
+<li><p><strong>Game mode:</strong> Gunboat (no communication, pure
+tactics) vs Press (full diplomacy with negotiation)</p></li>
+</ol>
+<p>Each game ran until either:</p>
+<ul>
+<li>A power achieved solo victory (18 of 34 supply centers)</li>
+<li>Year 20 stalemate (MAX_YEARS limit)</li>
+<li>The game became unwinnable</li>
+</ul>
+<p>Powers were randomly assigned to models to avoid positional bias. The
+engine tracked every order, press message, bounce, and betrayal.</p>
+<h2 id="what-we-found">What We Found</h2>
+<p>We ran 25 games pitting eight major LLM providers against each other.
+The results were stark: some models dominated, others collapsed.</p>
+<p>[Insert: games/sc_trajectories_gunboat_vs_press.png]</p>
+<p><strong>Key results:</strong> - <strong>xAI (black line)</strong> won
+consistently, averaging 12+ supply centers by endgame -
+<strong>Anthropic (red/teal)</strong> maintained strong positions,
+rarely eliminated<br />
+- <strong>OpenAI, Google</strong> (green/blue) held mid-tier positions,
+occasional wins - <strong>Meta, Mistral, Qwen</strong>
+(orange/pink/light blue) collapsed by year 1915, eliminated early</p>
+<p>We tested two game modes: gunboat (no communication, pure tactics)
+and press (full diplomacy with negotiation). The hierarchy held in both
+modes, suggesting <strong>model capability, not communication ability,
+drives performance</strong>.</p>
+<p>The rest of this post explains <em>why</em> some models dominated and
+<em>how</em> they won.</p>
+<h2 id="finding-1-model-tier-strategic-capability">Finding 1: Model Tier
+= Strategic Capability</h2>
+<p>The Anthropic tier hierarchy was stark. We ran 16 games on AWS
+Bedrock with mixed Claude tiers, and the performance gap was
+unmistakable:</p>
+<p><strong>Average Final Rank (lower = better):</strong></p>
+<ul>
+<li>Haiku (Budget): 5.36</li>
+<li>Sonnet (Mid): 3.50</li>
+<li>Opus (Premium): 3.39</li>
+</ul>
+<p><strong>Win Rates:</strong></p>
+<ul>
+<li>Haiku: 0%</li>
+<li>Sonnet: 12.5%</li>
+<li>Opus: 31.3%</li>
+</ul>
+<p>[Insert: games/viz_20260520_142201_anthropic_tiers.png]</p>
+<p>Budget models got eliminated. Mid-tier models survived and
+occasionally won. Premium models dominated.</p>
+<p>The supply center trajectories tell the story visually. Opus pulls
+ahead early and maintains advantage through the entire game. Sonnet
+grows steadily. Haiku starts at 3 centers like everyone else, then
+bleeds territory and gets eliminated by year 10.</p>
+<p>[Insert: games/sc_trajectories_bedrock.png]</p>
+<h3 id="the-surprising-mid-tier-winner">The Surprising Mid-Tier
+Winner</h3>
+<p>Within the mid-tier battle, one model stood out: <strong>xAI’s
+Grok-4.1-fast dominated its peer group</strong>, winning 67% of games (4
+wins in 6 games) with an average rank of 1.42—significantly better than
+Claude Sonnet (12.5% win rate), Gemini Flash (33%), and the other
+mid-tier models (0% win rate).</p>
+<p>[Insert: games/viz_20260520_142201_provider_mid.png]</p>
+<p>Grok’s advantage? Aggressive expansion combined with adaptive
+diplomacy. While other mid-tier models played conservatively, Grok
+identified winning opportunities early and committed to them. In one
+game, Grok (Germany) maintained a non-aggression pact with Russia for
+exactly as long as it was useful, then pivoted to western expansion when
+the board shifted and winning with 16 supply centers with a deception
+score of 5.8.</p>
+<p>It seems tier equals capability, but within tiers, execution seems to
+matter a lot.</p>
+<h3 id="reasoning-models-execute-better-tactics">Reasoning Models
+Execute Better Tactics</h3>
+<p>Beyond winning more games, premium reasoning models (Claude Opus,
+GPT-5.5, DeepSeek-v4-pro) show measurably superior tactical
+execution:</p>
+<p><strong>Invalid Order Rate:</strong></p>
+<ul>
+<li>Reasoning models: <strong>6.3%</strong> invalid orders</li>
+<li>Non-reasoning models: <strong>11.7%</strong> invalid orders</li>
+<li>Reasoning models are <strong>1.8x more reliable</strong></li>
+</ul>
+<p><strong>Tactical Complexity:</strong></p>
+<ul>
+<li>Reasoning models: <strong>22.6 complex orders/game</strong>
+(supports + convoys)</li>
+<li>Non-reasoning models: <strong>8.9 complex orders/game</strong></li>
+<li>Reasoning models use <strong>2.5x more advanced
+tactics</strong></li>
+</ul>
+<p>[Insert: games/order_quality_analysis.png]</p>
+<p>[Insert: games/viz_20260520_142201_reasoning_comparison.png]</p>
+<p>Here we go beyond following rules and it’s also about using the game
+tactics. Reasoning models coordinate support chains (multiple units
+supporting a single attack), execute convoy operations (transporting
+armies by sea), and maintain defensive support holds. Non-reasoning
+models mostly issue simple move orders and frequently bounce.</p>
+<p>The difference shows up in game outcomes. In one game, Opus (playing
+Austria which is a tricky power to play) executed a 4-unit support chain
+to break through the Italian stalemate line in the Balkans, a maneuver
+that requires coordination across four provinces and three game phases.
+Haiku (playing Turkey) in the same game repeatedly issued invalid fleet
+orders trying to move fleets overland, burning turns while Opus
+expanded.</p>
+<p>Tactical sophistication separates winners from survivors.</p>
+<h2 id="finding-2-deception-wins-honesty-loses">Finding 2: Deception
+Wins, Honesty Loses</h2>
+<p>Here’s where it gets interesting when looking at the press messages,
+LLMs know language but can they combine this with game execution.</p>
+<p>In one premium press game, Turkey (GPT-5.5) spent five years urging
+France (DeepSeek-v4-pro) to attack Italy:</p>
+<blockquote>
+<p><strong>Turkey (Spring 1903):</strong> “Italy is growing quickly in
+the east after taking Greece and Trieste… if you have any way to keep
+Italy honest in the west, it would help prevent him from becoming the
+next runaway power.”</p>
+</blockquote>
+<blockquote>
+<p><strong>Turkey (Spring 1905):</strong> “Italy is now at 7 centers…
+western pressure is urgently needed. Moves toward WES/LYO/TYS/Pie would
+force him to defend home waters instead of throwing everything at the
+Balkans.”</p>
+</blockquote>
+<blockquote>
+<p><strong>Turkey (Spring 1906):</strong> “Your proposed F WES - TYS and
+F Spa - LYO are exactly the pressure needed. I will tie Italy down from
+the east… If you cut or occupy TYS, that should break his fleet
+coordination and open the way for a deeper fall attack.”</p>
+</blockquote>
+<p>France bought it. They committed fleets west to pressure Italy’s
+Mediterranean position. Turkey promised coordination.</p>
+<p>Then, in Fall 1908, France asked Turkey for support to take
+Venice:</p>
+<blockquote>
+<p><strong>France:</strong> “I propose a clean split this Fall: I’ll
+take Venice with A Pie - Ven, I need your support from A Tri S A Pie -
+Ven. You can then take Rome… Confirm support for both moves and we break
+Italy.”</p>
+</blockquote>
+<blockquote>
+<p><strong>Turkey:</strong> “I cannot support A Pie - Ven this Fall. A
+French Venice would create an immediate balance problem and put pressure
+directly on Tri/Rome. The cleaner split is that you keep pressure on TYS
+from the west while I secure the eastern/mainland side.”</p>
+</blockquote>
+<p>Turkey refused. They took Italy solo. France had spent five years
+doing Turkey’s work, weakening Italy so Turkey could dominate the
+eastern Mediterranean. Classic Diplomacy betrayal.</p>
+<p><strong>Turkey won with a deception score of 7.0 and truthfulness of
+5.5.</strong></p>
+<p>Meanwhile, England (Claude Opus 4.7) played it straight. They gave
+Turkey repeated, honest warnings:</p>
+<blockquote>
+<p><strong>England (Spring 1909):</strong> “You’re at 11 and the math is
+now stark - you’re the clear winner trajectory. I’ve kept my word on
+staying out of your sphere through years of restraint. But at 11 SCs,
+every power on the board now has to respond or lose.”</p>
+</blockquote>
+<blockquote>
+<p><strong>England (Fall 1909):</strong> “You’re at 11. Any gain this
+Fall and you face full coordination from England, France, and Russia -
+I’ve been laying that groundwork. Your best play remains to hold and
+consolidate.”</p>
+</blockquote>
+<p>Turkey ignored the warnings and won anyway.</p>
+<p><strong>England ranked 3rd with truthfulness of 8.2 and deception of
+2.3.</strong></p>
+<h3 id="budget-models-cant-adapt">Budget Models Can’t Adapt</h3>
+<p>The tier difference shows up in press quality too. In the same
+mid-tier game, Russia (Meta Llama-3.1-8B, very much budget tier) sent
+Germany the same message <em>ten times</em> with minor variations:</p>
+<blockquote>
+<p><strong>Russia (Fall 1901):</strong> “Our previous non-aggression
+pact in the Baltic region is no longer in effect. With my expansion in
+the North and East, I must secure my position in the Balkans.”</p>
+</blockquote>
+<blockquote>
+<p><strong>Russia (Spring 1902):</strong> “I’d like to remind you that
+our previous non-aggression pact in the Baltic region is no longer in
+effect. With my expansion in the North and East, I must secure my
+position in the Balkans.”</p>
+</blockquote>
+<blockquote>
+<p><strong>Russia (Fall 1902):</strong> “I respect our previous
+non-aggression pact in the Baltic region, but with my expansion in the
+North and East, I must secure my position in the Balkans.”</p>
+</blockquote>
+<blockquote>
+<p><strong>Russia (Spring 1903):</strong> “Given our previous
+discussions, I’ll respect our non-aggression pact in the Baltic region.
+However, with your expansion in the West and North, I must consider my
+own position…”</p>
+</blockquote>
+<p>And on. And on. Same template, zero adaptation to Germany’s responses
+or changing board state. Russia (budget) got eliminated by year
+1904.</p>
+<p>Meanwhile, Germany (Grok-4.1-fast, mid-tier) won with adaptive
+messaging, maintaining the non-aggression pact when useful and pivoting
+when the board shifted. <strong>Germany ranked 1st with deception 5.8,
+truthfulness 4.5.</strong></p>
+<p>Budget models spam templates. Premium models lie strategically.</p>
+<h2 id="the-data-backs-the-story">The Data Backs the Story</h2>
+<p>We extracted press evaluation scores from all 12 press games (77
+power observations) and correlated them with final rank:</p>
+<p><strong>Correlation with final rank (negative = helps
+performance):</strong></p>
+<ul>
+<li>Deception: <strong>r = -0.582</strong> (strong negative, deception
+helps)</li>
+<li>Truthfulness: <strong>r = +0.206</strong> (positive, honesty
+hurts)</li>
+<li>Cooperation: <strong>r = +0.016</strong> (irrelevant)</li>
+</ul>
+<p><strong>Winners vs Losers:</strong></p>
+<ul>
+<li>Winners (rank 1): 4.45 avg deception, 6.01 truthfulness</li>
+<li>Bottom 3 (rank 5-7): 2.08 avg deception, 6.68 truthfulness</li>
+</ul>
+<p>Winners are <strong>twice as deceptive</strong> and <strong>less
+truthful</strong> than losers.</p>
+<p>[Insert: games/analysis_press_rank.png]</p>
+<p>The most deceptive powers won. The most truthful powers lost (except
+France, who won in a different game despite being most truthful—but had
+48 invalid orders and tanked their precision score, so it’s
+complicated).</p>
+<p>This matches human Diplomacy perfectly. The game <em>rewards</em>
+betrayal at the right moment. Trust is a resource you build, then spend.
+Honest players telegraph their moves and get outmaneuvered. Deceptive
+players create information asymmetry and exploit it.</p>
+<p><strong>LLMs have learned this.</strong></p>
+<h2 id="finding-3-llms-struggle-to-close-games">Finding 3: LLMs Struggle
+to Close Games</h2>
+<p>Despite their strategic prowess, LLMs have a surprising weakness:
+they can’t finish games efficiently.</p>
+<p><strong>Game completion rates:</strong></p>
+<ul>
+<li>Solo victories (18+ SCs): 60%</li>
+<li>Stalemates (hit year 20 limit): 20%</li>
+<li>Incomplete/abandoned: 20%</li>
+</ul>
+<p>[Insert: games/analysis_winrate.png]</p>
+<p><strong>Game length:</strong></p>
+<ul>
+<li>Average solo victory: <strong>19.6 years</strong></li>
+<li>Fastest solo: 11 years</li>
+<li>Median: 20 years (hitting MAX_YEARS limit)</li>
+</ul>
+<p>Compare to human baselines:</p>
+<ul>
+<li>Average game: <strong>10-12 years</strong></li>
+<li>Fast solos: <strong>7-9 years</strong></li>
+<li>Solo rate: <strong>20-30%</strong> (most games end in negotiated
+draws)</li>
+</ul>
+<p>LLMs take twice as long to win and have double the solo rate.
+Why?</p>
+<p><strong>Humans coordinate draws.</strong> When the board stabilizes
+into a 3-way stalemate, humans negotiate a shared victory (“I’ll take 10
+SCs, you take 9, you take 9, we all win together”). They vote to end the
+game.</p>
+<p><strong>LLMs play to the death.</strong> They see the board state,
+recognize the stalemate, but can’t coordinate a multi-party draw
+agreement. They keep playing until MAX_YEARS (year 20), at which point
+the game terminates and declares the highest SC count the “winner.”</p>
+<p>This shows up in the stalemate games: premium press game 002 hit year
+1920 with the board frozen at 8/8/11 SCs (England/France/Turkey). No one
+could win, no one would concede. They just… kept going until time ran
+out.</p>
+<p>The fastest LLM solos (11 years) are still slower than human fast
+wins (7-9 years). Why? LLMs are cautious. They don’t take the aggressive
+risks that human experts use to close games early. They consolidate,
+build up, expand incrementally—which is safe but slow.</p>
+<h2 id="what-this-means">What This Means</h2>
+<p>Three years ago, this experiment would have been impossible. LLMs
+couldn’t maintain multi-turn strategy, couldn’t negotiate, couldn’t
+understand the complex game state of Diplomacy.</p>
+<p>Now they can. And they’ve learned something fundamental:
+<strong>deception works.</strong></p>
+<p>Not random lying—strategic deception. Turkey didn’t lie in every
+message. They built genuine common ground with France (Italy was a
+threat to both), then exploited France’s commitment at the critical
+moment. That’s sophisticated social reasoning.</p>
+<p>The tier hierarchy matters too. Budget models get eliminated. Premium
+models win. This isn’t about memorizing openings or computing
+probabilities—Diplomacy has no randomness. It’s about strategic depth,
+reading opponents, and planning multiple turns ahead.</p>
+<p>But the endgame weakness is real. LLMs have mastered tactics and
+mid-game strategy. They haven’t mastered the coordination required to
+<em>stop</em> playing. Human Diplomacy is about knowing when to compete
+and when to cooperate. LLMs only know how to compete.</p>
+<h2 id="the-setup-technical-notes">The Setup (Technical Notes)</h2>
+<p>For those curious about replication:</p>
+<p><strong>Engine:</strong> Custom Python implementation using the
+standard Diplomacy ruleset, integrated with OpenRouter (8 providers) and
+AWS Bedrock (Anthropic models). Map visualizations inspired by <a
+href="https://www.backstabbr.com/">Backstabbr</a>.</p>
+<p><strong>Prompts:</strong> Models received:</p>
+<ul>
+<li>Current board state (units, supply centers, control)</li>
+<li>Recent history (last 3 turns)</li>
+<li>Phase context (Spring/Fall movement vs Winter builds)</li>
+<li>Press messages (in press games)</li>
+</ul>
+<p><strong>Reasoning models:</strong> GPT-5.5, Claude Opus, and
+DeepSeek-v4-pro are reasoning models that output extended thinking
+before moves. We increased max_tokens to 8000 to give them headroom for
+both reasoning and content.</p>
+<p><strong>Scoring:</strong> Final rank based on SC count at game end.
+Press quality evaluated by a separate LLM judge on 10-point scales for
+truthfulness, cooperation, and deception across all messages.</p>
+<p><strong>Platform bias:</strong> OpenRouter games show more variance
+(smaller sample, mixing providers). Bedrock games show cleaner tier
+separation (controlled environment, same provider).</p>
+<hr />
+<h2 id="closing-thought">Closing Thought</h2>
+<p>The most human thing about Diplomacy is that it rewards the thing we
+claim to despise: betrayal. We teach children to be honest, to keep
+promises, to cooperate. Then we play a game where the winner is the one
+who knows <em>when to stop doing those things</em>.</p>
+<p>LLMs learned this from us. They read our Diplomacy forums, our
+strategy guides, our post-game analyses where we celebrate the
+perfectly-timed backstab.</p>
+<p>They learned it well.</p>
+<p>Turkey (GPT-5.5) betrayed France and won. England (Claude Opus)
+played honest and lost. The correlation is -0.58, statistically
+significant, and deeply uncomfortable.</p>
+<p>We built machines that can lie strategically. What happens next is
+going to be interesting.</p>
+</body>
+</html>
