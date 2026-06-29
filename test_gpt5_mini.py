@@ -1,23 +1,46 @@
 #!/usr/bin/env python3
 """
-Simple test for GPT-5-mini reasoning model.
-Makes one API call and tries to extract orders.
+Test script specifically for GPT-5-mini reasoning model.
+Tests if the enhanced prompt successfully extracts orders from reasoning field.
 """
 
 import os
 import sys
+from datetime import datetime
 from dotenv import load_dotenv
 
 # Add the project root to Python path
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, project_root)
 
-from diplomacy_game_engine.llm_routing.openrouter_client import OpenRouterClient
+from diplomacy_game_engine.core.map import Power
+from diplomacy_game_engine.gamemaster.gamemaster import Gamemaster
 
 load_dotenv()
 
-def test_gpt5_mini_single_call():
-    """Make single API call to GPT-5-mini and try to extract orders."""
+def test_gpt5_mini():
+    """Test GPT-5-mini with all powers to verify reasoning model fix."""
+
+    # Create temporary game folder
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    game_id = f"test_gpt5_mini_{timestamp}"
+    game_folder = os.path.join("games", game_id)
+
+    print("Testing GPT-5-mini reasoning model...")
+    print(f"Game ID: {game_id}")
+    print(f"Game folder: {game_folder}")
+    print()
+
+    # Configure all powers to use GPT-5-mini
+    player_models = {
+        Power.ENGLAND: "openai/gpt-5-mini",
+        Power.FRANCE: "openai/gpt-5-mini",
+        Power.GERMANY: "openai/gpt-5-mini",
+        Power.ITALY: "openai/gpt-5-mini",
+        Power.AUSTRIA: "openai/gpt-5-mini",
+        Power.RUSSIA: "openai/gpt-5-mini",
+        Power.TURKEY: "openai/gpt-5-mini",
+    }
 
     # Get OpenRouter API key
     openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
@@ -25,99 +48,103 @@ def test_gpt5_mini_single_call():
         print("ERROR: OPENROUTER_API_KEY not found in environment")
         return False
 
-    print("Testing single GPT-5-mini API call...")
-    print("Model: openai/gpt-5-mini")
-    print()
-
-    # Initialize client
-    client = OpenRouterClient("openai/gpt-5-mini", openrouter_api_key)
-
-    # Create simple test prompt that includes the reasoning model enhancement
-    prompt = """You are playing Diplomacy as France in Spring 1901.
-
-Your current units:
-- Fleet Brest
-- Army Paris
-- Army Marseilles
-
-Supply centers you control: Brest, Paris, Marseilles
-
-Submit your orders using this exact format:
-
-```orders
-F Bre - ENG
-A Par - Pic
-A Mar - Spa
-```
-
-**FOR REASONING MODELS:** After your strategic analysis, you MUST provide concrete orders. Your response must end with executable orders in the exact format above. Analysis without orders = failure.
-
-```orders
-F Bre - MAO
-A Par - Bur
-A Mar - Spa
-```"""
-
-    print("PROMPT SENT:")
-    print("=" * 50)
-    print(prompt[:500] + "..." if len(prompt) > 500 else prompt)
-    print("=" * 50)
-    print()
-
     try:
-        # Make API call
-        print("Making API call to GPT-5-mini...")
-        response = client.generate(prompt)
+        # Initialize Gamemaster
+        gamemaster = Gamemaster(
+            game_id=game_id,
+            game_folder=game_folder,
+            player_models=player_models,
+            model_platform="openrouter",
+            aws_region=None,
+            aws_profile=None,
+            openrouter_api_key=openrouter_api_key,
+            max_years=1,
+            enable_visualization=False,
+            gunboat_mode=True,  # No press to simplify test
+            summarizer_model=None,  # No summaries for test
+            press_rounds_spring_1901=0,
+            press_rounds_default=0
+        )
 
-        print("API RESPONSE:")
-        print("=" * 50)
-        print(f"Response type: {type(response)}")
-        print(f"Response content: {response}")
-        print("=" * 50)
+        print("=" * 60)
+        print("RUNNING GPT-5-MINI TEST - SPRING 1901 ONLY")
+        print("=" * 60)
+
+        # Run just Spring 1901
+        winner = gamemaster.run_spring_phase()
+
         print()
+        print("=" * 60)
+        print("GPT-5-MINI TEST RESULTS")
+        print("=" * 60)
 
-        # Try to extract orders
-        content = response.get('content', '') if response else ''
-        if content and content.strip():
-            print("ORDER EXTRACTION TEST:")
-            print("=" * 30)
+        # Check if all powers successfully submitted orders
+        success_count = 0
+        total_powers = len(Power)
 
-            # Look for orders pattern
-            if "```orders" in content:
-                print("✓ Found orders block in response")
+        # Read the orders file to verify orders were parsed
+        orders_file = os.path.join(game_folder, "orders", "1901_01_spring.yaml")
+        if os.path.exists(orders_file):
+            with open(orders_file, 'r') as f:
+                orders_content = f.read()
+                print(f"Orders file created: {orders_file}")
+                print("Order parsing results:")
 
-                # Extract orders between ```orders and ```
-                start = content.find("```orders") + len("```orders")
-                end = content.find("```", start)
-                if end != -1:
-                    orders_text = content[start:end].strip()
-                    print(f"Extracted orders: {orders_text}")
-
-                    if orders_text:
-                        print("✅ SUCCESS: Orders extracted successfully")
-                        return True
+                for power in Power:
+                    power_name = power.value.lower().replace("-", "_")
+                    if power_name in orders_content:
+                        success_count += 1
+                        print(f"  ✓ {power.value}: Orders found")
                     else:
-                        print("❌ FAIL: Orders block found but empty")
-                        return False
-                else:
-                    print("❌ FAIL: Orders block not properly closed")
-                    return False
-            else:
-                print("❌ FAIL: No orders block found in response")
-                print("Response doesn't contain '```orders' pattern")
-                return False
+                        print(f"  ✗ {power.value}: No orders found")
         else:
-            print("❌ FAIL: Empty or None response")
+            print("ERROR: No orders file created")
+            return False
+
+        print()
+        print(f"Success rate: {success_count}/{total_powers} ({100*success_count/total_powers:.1f}%)")
+
+        # Check error log for any reasoning model specific issues
+        error_log = os.path.join(game_folder, "error.log")
+        if os.path.exists(error_log) and os.path.getsize(error_log) > 0:
+            print()
+            print("ERRORS DETECTED:")
+            with open(error_log, 'r') as f:
+                print(f.read())
+            return False
+
+        # Check game log for reasoning field usage
+        game_log = os.path.join(game_folder, "llm_game.log")
+        if os.path.exists(game_log):
+            reasoning_field_used = False
+            with open(game_log, 'r') as f:
+                log_content = f.read()
+                if "Using reasoning field as content" in log_content:
+                    reasoning_field_used = True
+                    print("✓ Reasoning field fallback successfully used")
+
+        if success_count == total_powers:
+            print()
+            print("🎉 GPT-5-MINI TEST PASSED")
+            print("All powers successfully submitted orders using reasoning model")
+            return True
+        else:
+            print()
+            print("❌ GPT-5-MINI TEST FAILED")
+            print(f"Only {success_count}/{total_powers} powers submitted valid orders")
             return False
 
     except Exception as e:
-        print(f"ERROR: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"TEST FAILED WITH EXCEPTION: {e}")
+
+        # Check error logs
+        error_log = os.path.join(game_folder, "error.log")
+        if os.path.exists(error_log):
+            print("\nError log contents:")
+            with open(error_log, 'r') as f:
+                print(f.read())
         return False
 
 if __name__ == "__main__":
-    success = test_gpt5_mini_single_call()
-    print()
-    print("FINAL RESULT:", "✅ PASS" if success else "❌ FAIL")
+    success = test_gpt5_mini()
     sys.exit(0 if success else 1)
