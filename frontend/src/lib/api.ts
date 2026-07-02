@@ -196,3 +196,26 @@ export async function fetchTurnMetrics(gameId: string, year?: number, season?: s
 
   return response.json();
 }
+
+export interface GameEvent {
+  id: number;
+  game_id: string;
+  year: number;
+  season: string;
+  event_type: string;
+  power: string | null;
+  description: string;
+  metadata: any;
+  severity: string;
+  created_at: string;
+}
+
+export async function fetchGameEvents(gameId: string): Promise<GameEvent[]> {
+  const response = await fetch(`${API_BASE_URL}/games/${gameId}/events`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch game events: ${response.statusText}`);
+  }
+
+  return response.json();
+}

@@ -362,6 +362,22 @@ def get_press_metrics(game_id: str, year: int = None, season: str = None):
 
     return metrics
 
+@app.get("/games/{game_id}/events")
+def get_game_events(game_id: str):
+    """Get timeline events for a game."""
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT * FROM events
+        WHERE game_id = %s
+        ORDER BY year, season, id
+    """, (game_id,))
+    events = cur.fetchall()
+    conn.close()
+
+    return events
+
 @app.get("/games/{game_id}/files")
 def list_game_files(game_id: str):
     """List available files for a game."""
