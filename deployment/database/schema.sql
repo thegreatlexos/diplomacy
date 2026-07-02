@@ -121,6 +121,20 @@ CREATE TABLE IF NOT EXISTS power_scores (
     UNIQUE(game_id, power)
 );
 
+-- Game events (key moments for timeline)
+CREATE TABLE IF NOT EXISTS events (
+    id SERIAL PRIMARY KEY,
+    game_id VARCHAR(100) REFERENCES games(game_id) ON DELETE CASCADE,
+    year INT NOT NULL,
+    season VARCHAR(10) NOT NULL,
+    event_type VARCHAR(30) NOT NULL, -- 'game_start', 'territory_shift', 'elimination', 'milestone', 'victory'
+    power VARCHAR(50),
+    description TEXT NOT NULL,
+    metadata JSONB,
+    severity VARCHAR(10) DEFAULT 'normal', -- 'low', 'normal', 'high', 'critical'
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Indexes for performance
 CREATE INDEX idx_games_game_id ON games(game_id);
 CREATE INDEX idx_models_game_id ON models(game_id);
@@ -133,3 +147,5 @@ CREATE INDEX idx_sc_year ON supply_centers(year);
 CREATE INDEX idx_turn_metrics_game ON turn_metrics(game_id);
 CREATE INDEX idx_press_metrics_game ON press_metrics(game_id);
 CREATE INDEX idx_power_scores_game ON power_scores(game_id);
+CREATE INDEX idx_events_game ON events(game_id);
+CREATE INDEX idx_events_year_season ON events(game_id, year, season);
