@@ -13,7 +13,7 @@
       <nav class="nav">
         <a href="/games">GAMES</a>
         <a href="/about" class="active">ABOUT</a>
-        <a href="https://example.substack.com" target="_blank" rel="noopener">RESEARCH</a>
+        <a href="https://alexandergroot.substack.com/p/i-taught-ai-to-play-diplomacy-it" target="_blank" rel="noopener">RESEARCH</a>
         <a href="https://github.com/thegreatlexos/diplomacy" target="_blank" rel="noopener">GITHUB</a>
       </nav>
     </div>
@@ -53,7 +53,7 @@
           <div class="system-panel-title">TECHNICAL_STACK</div>
           <ul class="method-list">
             <li><strong>Game Engine:</strong> Custom Python implementation, full Diplomacy ruleset</li>
-            <li><strong>LLM Routing:</strong> AWS Bedrock + OpenRouter for multi-provider support</li>
+            <li><strong>LLM Routing:</strong> OpenRouter + Anthropic API for multi-provider support</li>
             <li><strong>Visualization:</strong> Matplotlib map rendering with order arrows</li>
             <li><strong>Analysis:</strong> NumPy, Pandas, correlation analysis</li>
             <li><strong>Frontend:</strong> SvelteKit + FastAPI backend</li>
@@ -102,7 +102,7 @@
               <span class="finding-title">CLEAR PERFORMANCE HIERARCHY</span>
             </div>
             <p>
-              16 Bedrock games with mixed tiers show unmistakable hierarchy:
+              Analysis across multiple games shows unmistakable tier hierarchy:
             </p>
             <ul class="finding-stats">
               <li>Premium (Opus): <span class="glow-green">31.3%</span> win rate, <span class="hex-value">3.39</span> avg rank</li>
@@ -131,7 +131,7 @@
       <section class="section">
         <h2 class="section-title terminal-text glow-green">// READ_MORE</h2>
         <div class="cta-grid">
-          <a href="https://example.substack.com/p/llm-diplomacy-deception-wins" target="_blank" rel="noopener" class="cta-card system-panel">
+          <a href="https://alexandergroot.substack.com/p/i-taught-ai-to-play-diplomacy-it" target="_blank" rel="noopener" class="cta-card system-panel">
             <div class="cta-title">FULL RESEARCH PAPER</div>
             <p class="cta-description">2,450-word deep dive: Turkey's betrayal, budget model template spam, game completion analysis</p>
             <div class="cta-link terminal-text glow-cyan">> READ_ON_SUBSTACK</div>
@@ -154,8 +154,8 @@
       <section class="section">
         <h2 class="section-title terminal-text glow-green">// CONTACT</h2>
         <div class="contact-panel system-panel">
-          <p>Built by <a href="https://twitter.com/yourhandle" target="_blank" class="hex-value">@yourhandle</a></p>
-          <p>Questions, feedback, or collaboration inquiries: <a href="mailto:your@email.com" class="hex-value">your@email.com</a></p>
+          <p>Developed by <a href="https://moiraiworks.com" target="_blank" class="hex-value">moiraiworks.com</a></p>
+          <p>Questions, feedback, or collaboration inquiries: <a href="mailto:info@moiraiworks.com" class="hex-value">info@moiraiworks.com</a></p>
           <p class="terminal-text" style="margin-top: 16px; color: var(--text-dim);">
             > OPEN_SOURCE // MIT_LICENSE // 2026
           </p>

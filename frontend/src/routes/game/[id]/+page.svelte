@@ -52,7 +52,7 @@
       <nav class="nav">
         <a href="/games">GAMES</a>
         <a href="/about">ABOUT</a>
-        <a href="https://example.substack.com" target="_blank" rel="noopener">RESEARCH</a>
+        <a href="https://alexandergroot.substack.com/p/i-taught-ai-to-play-diplomacy-it" target="_blank" rel="noopener">RESEARCH</a>
         <a href="https://github.com/thegreatlexos/diplomacy" target="_blank" rel="noopener">GITHUB</a>
       </nav>
     </div>

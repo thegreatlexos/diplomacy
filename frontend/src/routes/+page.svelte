@@ -1,24 +1,54 @@
 <script>
   import { onMount } from 'svelte';
+  import { fetchOverviewStats } from '$lib/api';
 
   let statsVisible = false;
   let initComplete = false;
+  let stats = [
+    { label: 'TOTAL_GAMES', value: '0x19', decimal: '25' },
+    { label: 'AI_PROVIDERS', value: '0x08', decimal: '8' },
+    { label: 'GAME_YEARS', value: '0xAF', decimal: '175' },
+    { label: 'TOTAL_ORDERS', value: '0x2FA0', decimal: '12,192' }
+  ];
 
-  onMount(() => {
+  onMount(async () => {
     setTimeout(() => {
       statsVisible = true;
     }, 500);
     setTimeout(() => {
       initComplete = true;
     }, 1500);
-  });
 
-  const stats = [
-    { label: 'TOTAL_GAMES', value: '0x19', decimal: '25' },
-    { label: 'AI_PROVIDERS', value: '0x08', decimal: '8' },
-    { label: 'GAME_YEARS', value: '0xAF', decimal: '175' },
-    { label: 'TOTAL_ORDERS', value: '0x2FA0', decimal: '12,192' }
-  ];
+    // Fetch real stats from API
+    try {
+      const overviewStats = await fetchOverviewStats();
+      stats = [
+        {
+          label: 'TOTAL_GAMES',
+          value: '0x' + overviewStats.total_games.toString(16).toUpperCase(),
+          decimal: overviewStats.total_games.toString()
+        },
+        {
+          label: 'AI_PROVIDERS',
+          value: '0x' + overviewStats.total_providers.toString(16).toUpperCase(),
+          decimal: overviewStats.total_providers.toString()
+        },
+        {
+          label: 'GAME_YEARS',
+          value: '0x' + overviewStats.total_years.toString(16).toUpperCase(),
+          decimal: overviewStats.total_years.toString()
+        },
+        {
+          label: 'TOTAL_ORDERS',
+          value: '0x' + overviewStats.total_orders.toString(16).toUpperCase(),
+          decimal: overviewStats.total_orders.toLocaleString()
+        }
+      ];
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+      // Keep default values on error
+    }
+  });
 
   const featuredGames = [
     {
@@ -71,7 +101,7 @@
       <nav class="nav">
         <a href="/games">GAMES</a>
         <a href="/about">ABOUT</a>
-        <a href="https://example.substack.com" target="_blank" rel="noopener">RESEARCH</a>
+        <a href="https://alexandergroot.substack.com/p/i-taught-ai-to-play-diplomacy-it" target="_blank" rel="noopener">RESEARCH</a>
         <a href="https://github.com/thegreatlexos/diplomacy" target="_blank" rel="noopener">GITHUB</a>
       </nav>
     </div>
@@ -109,67 +139,9 @@
       </div>
     </div>
 
-    <!-- ASCII art map -->
-    <div class="ascii-art">
-      <pre class="europe-map">
-╔════════════════════════════════════════════════════════════╗
-║                 DIPLOMACY // EUROPE 1901                   ║
-╠════════════════════════════════════════════════════════════╣
-║                                                            ║
-║        ┌─────────────────────┐                            ║
-║        │   ENGLAND           │        ╔════╗              ║
-║    ┌───┴──┐              ┌───┴───┐    ║RUSSIA           ║
-║    │ EDI  │              │  NWY  │    ║        ┌────┐    ║
-║    └──┬───┘              └───┬───┘    ║    ┌───┤STP │    ║
-║       │    ┌──────────┐      │        ║    │   └────┘    ║
-║    ┌──┴──┐ │  NORTH   │  ┌───┴──┐    ║ ┌──┴─┐           ║
-║    │ LVP ├─┤   SEA    ├──┤ DEN  ├────╫─┤WAR │           ║
-║    └──┬──┘ └─────┬────┘  └───┬──┘    ║ └─┬──┘           ║
-║    ┌──┴──┐    ┌──┴───┐   ┌───┴──┐    ║ ┌─┴──┐   ┌────┐ ║
-║    │ YOR ├────┤ NTH  ├───┤ HEL  ├────╫─┤BAL ├───┤MOS │ ║
-║    └──┬──┘    └──┬───┘   └───┬──┘    ║ └─┬──┘   └────┘ ║
-║    ┌──┴──┐    ┌──┴───┐   ┌───┴──┐    ║ ┌─┴──┐   ┌────┐ ║
-║    │ LON ├────┤ ENG  ├───┤ HOL  ├────╫─┤PRU ├───┤LVN │ ║
-║    └──┬──┘    └──┬───┘   └───┬──┘    ║ └─┬──┘   └────┘ ║
-║    ┌──┴──┐    ┌──┴───┐   ┌───┴──┐  ┌─╫──┴──┐   ┌────┐ ║
-║    │ WAL ├────┤ IRI  │   │ BEL  ├──┤ ║ SIL ├───┤UKR │ ║
-║    └─────┘    └──────┘   └───┬──┘  │ ╚══╤══╝   └────┘ ║
-║   FRANCE                  ┌───┴──┐  │    │             ║
-║    ┌─────┐  ┌──────┐  ┌──┴───┐  │  │ ┌──┴──┐          ║
-║    │ BRE ├──┤ PIC  ├──┤ BUR  ├──┴──┼─┤ BOH │          ║
-║    └──┬──┘  └──┬───┘  └──┬───┘  ┌──┴─┤     │          ║
-║    ┌──┴──┐  ┌──┴───┐  ┌──┴───┐  │ ┌──┴──┐  │  AUSTRIA ║
-║    │ PAR ├──┤ GAS  ├──┤ MAR  ├──┼─┤ MUN ├──┴─┐        ║
-║    └─────┘  └──┬───┘  └──┬───┘  │ └──┬──┘  ┌─┴───┐    ║
-║             ┌──┴───┐  ┌──┴───┐  │ ┌──┴──┐  │ TYR │    ║
-║             │ SPA  ├──┤ LYO  ├──┼─┤ PIE ├──┴──┬──┘    ║
-║             └──┬───┘  └──────┘  │ └──┬──┘  ┌──┴───┐   ║
-║             ┌──┴───┐             │ ┌──┴──┐  │ VIE  │   ║
-║             │ POR  │  ┌───────┐  └─┤ TUS ├──┴───┬──┘   ║
-║             └──────┘  │  WES  │    └──┬──┘  ┌───┴───┐  ║
-║                       └───┬───┘    ┌──┴──┐  │ TRI   │  ║
-║              ╔═══════════╤╝        │ ROM ├──┴───┬───┘  ║
-║              ║  TURKEY   │         └──┬──┘  ┌───┴───┐  ║
-║              ║        ┌──┴───┐     ┌──┴──┐  │ BUD   │  ║
-║              ║        │ TYS  ├─────┤ NAP ├──┴───┬───┘  ║
-║              ║        └──┬───┘     └──┬──┘  ┌───┴───┐  ║
-║              ║        ┌──┴───┐     ┌──┴──┐  │ SER   │  ║
-║              ║        │ ION  ├─────┤ APU │  └───┬───┘  ║
-║              ║        └──┬───┘     └─────┘  ┌───┴───┐  ║
-║              ║        ┌──┴───┐              │ RUM   │  ║
-║              ║     ┌──┤ AEG  ├──────────────┴───┬───┘  ║
-║              ║     │  └──┬───┘              ┌───┴───┐  ║
-║              ║  ┌──┴──┐  │  ┌──────────┐   │ BLA   │  ║
-║              ║  │ SMY ├──┴──┤   GRE    ├───┴───┬───┘  ║
-║              ║  └──┬──┘     └──────────┘   ┌───┴───┐  ║
-║              ║  ┌──┴──┐     ┌──────────┐   │ ARM   │  ║
-║              ║  │ ANK ├─────┤   CON    ├───┴───────┘  ║
-║              ║  └─────┘     └──────────┘              ║
-║              ╚════════════════════════════════════════╣
-║                                                        ║
-║  7 POWERS // 34 SUPPLY CENTERS // 75 PROVINCES        ║
-╚════════════════════════════════════════════════════════╝
-      </pre>
+    <!-- Map visualization -->
+    <div class="map-container">
+      <img src="/digitaleurope.png" alt="Diplomacy Europe 1901 Map" class="europe-map-img" />
     </div>
   </section>
 
@@ -274,14 +246,14 @@
       <div class="footer-section">
         <div class="footer-title terminal-text">SYSTEM_INFO</div>
         <p>Open research platform for LLM strategic reasoning</p>
-        <p>Built by <a href="https://twitter.com/yourhandle" target="_blank">@yourhandle</a></p>
+        <p>Developed by <a href="https://moiraiworks.com" target="_blank">moiraiworks.com</a></p>
       </div>
 
       <div class="footer-section">
         <div class="footer-title terminal-text">RESOURCES</div>
         <ul class="footer-links">
           <li><a href="https://github.com/thegreatlexos/diplomacy">// GITHUB_REPO</a></li>
-          <li><a href="https://example.substack.com">// RESEARCH_BLOG</a></li>
+          <li><a href="https://alexandergroot.substack.com/p/i-taught-ai-to-play-diplomacy-it">// RESEARCH_BLOG</a></li>
           <li><a href="/about">// METHODOLOGY</a></li>
           <li><a href="/games">// ALL_GAMES</a></li>
         </ul>
@@ -291,7 +263,7 @@
         <div class="footer-title terminal-text">TECH_STACK</div>
         <ul class="footer-links">
           <li>// PYTHON_3.7+</li>
-          <li>// AWS_BEDROCK + OPENROUTER</li>
+          <li>// OPENROUTER + ANTHROPIC_API</li>
           <li>// SVELTEKIT + FASTAPI</li>
           <li>// MATPLOTLIB + NUMPY</li>
         </ul>
@@ -407,15 +379,18 @@
     gap: 16px;
   }
 
-  .ascii-art {
+  .map-container {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     padding: 24px;
     overflow-x: auto;
     position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
 
-  .ascii-art::before {
+  .map-container::before {
     content: '';
     position: absolute;
     top: 0;
@@ -426,13 +401,13 @@
     pointer-events: none;
   }
 
-  .europe-map {
-    color: var(--accent-green);
-    font-size: 9px;
-    line-height: 1.3;
-    margin: 0;
-    letter-spacing: 0.05em;
-    text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+  .europe-map-img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    filter: drop-shadow(0 0 8px rgba(0, 255, 65, 0.3));
+    position: relative;
+    z-index: 1;
   }
 
   /* Stats */
